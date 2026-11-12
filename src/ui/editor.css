@@ -1,0 +1,129 @@
+/* The open note (board web-main: overline breadcrumb, pill toolbar, 44 px serif title, 560 px measure). */
+.editor-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-16);
+  padding: var(--space-16) var(--space-16) 0 var(--space-40);
+}
+.crumb {
+  font-size: var(--type-ui-overline-size);
+  font-weight: var(--type-ui-overline-weight);
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--c-text-secondary);
+}
+.back-button {
+  display: none;
+  min-height: var(--h-target-ios-min);
+  padding: 0 var(--space-8);
+  color: var(--c-accent);
+  font-weight: 600;
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-radius: 20px;
+  background: var(--c-surface-raised);
+}
+.tool {
+  height: var(--h-toolbar-desktop);
+  padding: 0 12px;
+  border-radius: var(--radius-row);
+  font-size: var(--type-ui-label-size);
+}
+.tool:hover {
+  background: var(--c-accent-tint);
+}
+.tool[aria-pressed='true'],
+.tool[aria-expanded='true'] {
+  background: var(--c-accent-tint);
+  color: var(--c-accent-tint-on-tint);
+  font-weight: 600;
+}
+.trash-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+  margin: var(--space-16) var(--space-16) 0 var(--space-40);
+  padding: var(--space-16);
+  border-radius: var(--radius-card);
+  background: var(--c-warning-banner);
+  color: var(--c-warning-text);
+}
+.trash-banner p {
+  margin: 0;
+}
+.trash-title {
+  font-weight: 600;
+}
+.trash-actions {
+  display: flex;
+  gap: var(--space-8);
+}
+.editor-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-16) var(--space-40) var(--space-40);
+}
+.editor-page {
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+}
+.note-title {
+  border: 0;
+  padding: 0;
+  resize: none;
+  overflow: hidden;
+  field-sizing: content;
+  background: transparent;
+  color: var(--c-text-primary);
+  font-family: var(--font-serif);
+  font-size: var(--type-note-title-size);
+  line-height: var(--type-note-title-line);
+  font-weight: var(--type-note-title-weight);
+  letter-spacing: var(--type-note-title-tracking);
+}
+.note-title:focus,
+.note-body:focus {
+  outline: none;
+}
+.edited {
+  margin: var(--space-8) 0 var(--space-16);
+  font-size: var(--type-ui-meta-size);
+  color: var(--c-text-secondary);
+}
+.note-body {
+  min-height: 60vh;
+  border: 0;
+  padding: 0;
+  resize: none;
+  background: transparent;
+  color: var(--c-text-body);
+  font-family: var(--font-serif);
+  font-size: var(--type-body-size);
+  line-height: var(--type-body-line);
+  field-sizing: content;
+}
+.note-title::placeholder,
+.note-body::placeholder {
+  color: var(--c-text-placeholder);
+}
+.editor-empty {
+  margin: auto;
+  padding: var(--space-64);
+  color: var(--c-text-secondary);
+}

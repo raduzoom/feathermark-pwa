@@ -172,7 +172,7 @@
   }
 }
 
-/* Phone: one column */
+/* Phone: one column. The list is the start screen; an opened note shows full width with Back. */
 @media (max-width: 639px) {
   .notes {
     flex: 1 1 auto;
@@ -180,6 +180,29 @@
   }
   .editor {
     display: none;
+  }
+  .page[data-phone-note='true'] .notes {
+    display: none;
+  }
+  .page[data-phone-note='true'] .editor {
+    display: flex;
+    flex: 1 1 auto;
+  }
+  .page[data-phone-note='true'] .back-button {
+    display: inline-flex;
+    align-items: center;
+  }
+  .appbar .search {
+    display: none;
+  }
+  .editor-head,
+  .editor-scroll,
+  .trash-banner {
+    padding-left: var(--space-16);
+    margin-left: 0;
+  }
+  .editor-scroll {
+    padding-right: var(--space-16);
   }
 }
 

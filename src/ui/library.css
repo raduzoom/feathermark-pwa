@@ -1,0 +1,108 @@
+/* Library column: views, notebook tree and tags (board web-main: rows 36 px, 8 px radius, overline headings). */
+.library-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+.library-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 var(--space-8) var(--space-16);
+}
+.lib-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.lib-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.lib-row {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  height: 36px;
+  padding: 0 var(--space-32) 0 12px;
+  border-radius: var(--radius-input);
+  text-align: left;
+}
+.lib-item[data-depth='1'] .lib-row { padding-left: 28px; }
+.lib-item[data-depth='2'] .lib-row { padding-left: 44px; }
+.lib-item[data-depth='3'] .lib-row { padding-left: 60px; }
+.lib-item[data-depth='4'] .lib-row { padding-left: 76px; }
+.lib-item[data-depth='5'] .lib-row { padding-left: 92px; }
+.lib-item[data-depth='6'] .lib-row { padding-left: 108px; }
+.lib-row:hover {
+  background: var(--c-surface-raised);
+}
+.lib-row[aria-current='page'] {
+  background: var(--c-accent-tint);
+  color: var(--c-accent-tint-on-tint);
+  font-weight: 600;
+}
+.lib-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lib-count {
+  color: var(--c-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.lib-row[aria-current='page'] .lib-count {
+  color: inherit;
+}
+.lib-item .menu-anchor {
+  position: absolute;
+  right: var(--space-4);
+}
+.lib-more,
+.lib-add {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-input);
+  color: var(--c-text-secondary);
+  opacity: 0;
+}
+.lib-add {
+  opacity: 1;
+  font-size: 18px;
+  line-height: 1;
+}
+.lib-item:hover .lib-more,
+.lib-more:focus-visible,
+.lib-more[aria-expanded='true'] {
+  opacity: 1;
+}
+.lib-more:hover,
+.lib-add:hover {
+  background: var(--c-surface-raised);
+  color: var(--c-text-primary);
+}
+@media (hover: none) {
+  .lib-more {
+    opacity: 1;
+  }
+}
+.lib-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: var(--space-16) var(--space-4) var(--space-4) 12px;
+}
+.overline {
+  margin: 0;
+  font-size: var(--type-ui-overline-size);
+  font-weight: var(--type-ui-overline-weight);
+  letter-spacing: var(--type-ui-overline-tracking);
+  text-transform: uppercase;
+  color: var(--c-text-secondary);
+}

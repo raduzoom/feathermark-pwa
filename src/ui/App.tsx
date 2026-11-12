@@ -1,13 +1,25 @@
 import { signal } from '@preact/signals'
 import { useEffect, useLayoutEffect, useRef } from 'preact/hooks'
+import type { AppModel } from '../model/app-model.ts'
+import { DialogHost } from './Dialog.tsx'
+import { EditorPane } from './EditorPane.tsx'
+import { LibraryPanel } from './LibraryPanel.tsx'
 import { Logo } from './Logo.tsx'
+import { NoteList } from './NoteList.tsx'
+import { ErrorToast, UndoToast } from './Toasts.tsx'
 
 const drawerOpen = signal(false)
+/** Below 640 px: the list is the start screen; the note opened from it shows full width while it stays open.
+ *  When it leaves (trashed, deleted, replaced), the list comes back rather than another note or an empty pane. */
+const phoneOpenId = signal<string | null>(null)
 const DESKTOP = '(min-width: 1000px)'
+const accounts = Boolean(import.meta.env.VITE_FEATHER_ACCOUNTS)
+const isMac = /Mac|iPhone|iPad/.test(navigator.platform)
 
-export function App() {
+export function App({ model }: { model: AppModel }) {
   const menu = useRef<HTMLButtonElement>(null)
   const library = useRef<HTMLElement>(null)
+  const search = useRef<HTMLInputElement>(null)
   const returnFocus = useRef(false)
   const open = drawerOpen.value
 
@@ -42,9 +54,31 @@ export function App() {
     return () => desktop.removeEventListener('change', onChange)
   }, [])
 
+  // Alt+N new note (browsers keep Ctrl/⌘+N), Ctrl/⌘+K search. A layout effect, so the keys work from the first
+  // paint: a plain effect can run after the page has loaded and miss the first key press.
+  useLayoutEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyN') {
+        e.preventDefault()
+        newNote()
+      } else if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        search.current?.focus()
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
+
+  const newNote = () => {
+    model.newNote()
+    phoneOpenId.value = model.openNote.value?.id ?? null
+  }
+  const phoneNote = phoneOpenId.value !== null && model.openNote.value?.id === phoneOpenId.value
+
   // While the drawer is open, everything behind the scrim is out of reach for keyboard and screen reader.
   return (
-    <div class="page">
+    <div class="page" data-phone-note={phoneNote ? 'true' : 'false'}>
       <div class="glow glow-mint" aria-hidden="true" />
       <div class="glow glow-peach" aria-hidden="true" />
 
@@ -66,26 +100,74 @@ export function App() {
           <Logo size={28} />
           FeatherMark
         </h1>
+        <label class="search">
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" class="search-icon">
+            <path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14z M21 21l-5-5" />
+          </svg>
+          <input
+            ref={search}
+            type="search"
+            aria-label="Search all notes"
+            placeholder="Search all notes"
+            value={model.searchText.value}
+            onInput={(e) => model.searchAll(e.currentTarget.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                model.setSearch('')
+                e.currentTarget.blur()
+              }
+            }}
+          />
+          <kbd>{isMac ? '⌘ K' : 'Ctrl K'}</kbd>
+        </label>
       </header>
+
+      <div class="demo-line" inert={open}>
+        <p>This is a demo. Notes here aren't saved.</p>
+        {accounts ? (
+          <span class="demo-actions">
+            <button type="button" class="link-button">
+              Log in
+            </button>
+            <button type="button" class="link-button">
+              Create account
+            </button>
+          </span>
+        ) : (
+          <a class="demo-link" href="https://feathermark.com/download" rel="noopener">
+            Get FeatherMark
+          </a>
+        )}
+      </div>
 
       <div class="columns">
         {open && <div class="scrim" aria-hidden="true" onClick={() => close(true)} />}
         <nav id="library" ref={library} tabIndex={-1} aria-label="Library" class="panel library" data-open={open}>
-          <div class="library-top">
-            <button type="button" class="new-note">
-              New note
-            </button>
-          </div>
+          <LibraryPanel
+            model={model}
+            onNavigate={() => {
+              phoneOpenId.value = null
+              if (!matchMedia(DESKTOP).matches) close(false)
+            }}
+          />
         </nav>
-        <section aria-label="Notes" class="panel notes" inert={open} />
-        <main class="panel editor" inert={open} />
+        <section aria-label="Notes" class="panel notes" inert={open}>
+          <NoteList model={model} onOpen={() => (phoneOpenId.value = model.openNote.value?.id ?? null)} onEnter={() => document.getElementById('note-body')?.focus()} />
+        </section>
+        <main class="panel editor" inert={open}>
+          <EditorPane model={model} onBack={() => (phoneOpenId.value = null)} />
+        </main>
       </div>
 
       <div class="bottombar" inert={open}>
-        <button type="button" class="new-note-primary">
+        <button type="button" class="new-note-primary" onClick={newNote}>
           New note
         </button>
       </div>
+
+      <UndoToast model={model} />
+      <ErrorToast model={model} />
+      <DialogHost />
     </div>
   )
 }
