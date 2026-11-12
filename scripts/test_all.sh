@@ -26,6 +26,7 @@ step unit;         pnpm test
 step build;        pnpm build
 step headers;      test -f dist/_headers
 step no-spike;     test ! -e dist/spike
+step bundle-size;  node scripts/bundle-size.ts --check
 step "e2e ($FEATHER_ENGINES)"; pnpm e2e
 
 echo "all tests: OK"
