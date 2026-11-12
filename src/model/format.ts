@@ -1,0 +1,98 @@
+// Every user-visible string built from data (FeatherAppModel Formatting.swift), in the web's sentence case.
+import { displayTitle } from '../core/library/names.ts'
+import { LibraryError, type NoteSummary } from '../core/library/types.ts'
+
+export type FormatOpts = { locale?: string; timeZone?: string }
+const DAY = 86_400_000
+
+function dayKey(ms: number, o: FormatOpts): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: o.timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(ms)
+}
+const sameDay = (a: number, b: number, o: FormatOpts) => dayKey(a, o) === dayKey(b, o)
+const yesterday = (ms: number, now: number, o: FormatOpts) => sameDay(ms, now - DAY, o)
+
+function time(ms: number, o: FormatOpts): string {
+  return new Intl.DateTimeFormat(o.locale, { timeZone: o.timeZone, hour: '2-digit', minute: '2-digit' }).format(ms)
+}
+
+/** "7 Nov", or "2 Nov 2025" outside the current year. */
+function dayMonth(ms: number, now: number, o: FormatOpts): string {
+  const year = (t: number) => new Intl.DateTimeFormat('en-CA', { timeZone: o.timeZone, year: 'numeric' }).format(t)
+  const same = year(ms) === year(now)
+  return new Intl.DateTimeFormat(o.locale, { timeZone: o.timeZone, day: 'numeric', month: 'short', ...(same ? {} : { year: 'numeric' }) }).format(ms)
+}
+
+export function listDate(ms: number, now: number, o: FormatOpts = {}): string {
+  if (sameDay(ms, now, o)) return `Today, ${time(ms, o)}`
+  if (yesterday(ms, now, o)) return 'Yesterday'
+  return dayMonth(ms, now, o)
+}
+
+export function editedLine(ms: number, now: number, o: FormatOpts = {}): string {
+  if (sameDay(ms, now, o)) return `Edited today at ${time(ms, o)}`
+  if (yesterday(ms, now, o)) return `Edited yesterday at ${time(ms, o)}`
+  return `Edited ${dayMonth(ms, now, o)}`
+}
+
+export function trashMeta(trashedAt: number, retentionDays: number, now: number, o: FormatOpts = {}): string {
+  const deleted = sameDay(trashedAt, now, o) ? 'today' : yesterday(trashedAt, now, o) ? 'yesterday' : dayMonth(trashedAt, now, o)
+  const remaining = trashedAt + retentionDays * DAY - now
+  const days = Math.ceil(remaining / DAY)
+  const removed = remaining <= 0 ? 'removed today' : days === 1 ? 'removed in 1 day' : `removed in ${days} days`
+  return `Deleted ${deleted} · ${removed}`
+}
+
+export function noteMeta(s: Pick<NoteSummary, 'modified'>, notebookName: string | null, now: number, o: FormatOpts = {}): string {
+  const when = listDate(s.modified, now, o)
+  return notebookName ? `${when} · ${notebookName}` : when
+}
+
+/** "Groceries, pinned, Today, 08:15, Personal": a note row's accessible name. */
+export function rowLabel(s: NoteSummary, notebookName: string | null, now: number, o: FormatOpts = {}): string {
+  const parts = [displayTitle(s.title)]
+  if (s.pinned) parts.push('pinned')
+  parts.push(listDate(s.modified, now, o))
+  if (notebookName) parts.push(notebookName)
+  return parts.join(', ')
+}
+
+export type Confirmation = { title: string; message: string; button: string }
+const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
+
+export function deleteNotebookConfirmation(name: string, subNotebooks: number, notes: number): Confirmation {
+  const parts: string[] = []
+  if (subNotebooks > 0) parts.push(`Its ${count(subNotebooks, 'sub-notebook', 'sub-notebooks')} ${subNotebooks === 1 ? 'is' : 'are'} deleted too`)
+  if (notes > 0) {
+    const move = `${count(notes, 'note', 'notes')} ${notes === 1 ? 'moves' : 'move'} to the Trash`
+    parts.push(parts.length ? `its ${move}` : `Its ${move}`)
+  }
+  return { title: `Delete “${name}”?`, message: parts.length ? parts.join(', and ') + '.' : "It's empty.", button: 'Delete notebook' }
+}
+
+export function deleteTagConfirmation(name: string): Confirmation {
+  return { title: `Delete the tag “${name}”?`, message: 'Notes keep their text; only the tag is removed.', button: 'Delete tag' }
+}
+
+export function emptyTrashConfirmation(n: number): Confirmation {
+  return { title: 'Empty the Trash?', message: `${count(n, 'note', 'notes')} will be deleted for good. This can't be undone.`, button: 'Empty Trash' }
+}
+
+export function deletePermanentlyConfirmation(title: string): Confirmation {
+  return { title: `Delete “${displayTitle(title)}” permanently?`, message: "This can't be undone.", button: 'Delete permanently' }
+}
+
+export function errorMessage(e: unknown, tagName?: string): string {
+  if (e instanceof LibraryError) {
+    switch (e.kind) {
+      case 'duplicateTagName':
+        return `A tag named “${tagName ?? e.detail ?? ''}” already exists.`
+      case 'notebookCycle':
+        return "A notebook can't go inside its own sub-notebook."
+      case 'invalidName':
+        return "Names can't be empty."
+      case 'notFound':
+        return 'That item no longer exists.'
+    }
+  }
+  return `Something went wrong: ${e instanceof Error ? e.message : String(e)}`
+}
