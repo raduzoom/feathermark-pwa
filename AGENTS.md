@@ -4,6 +4,21 @@ Rules for AI agents in this repo. `CLAUDE.md` is a symlink to this file. The sha
 
 This repo is the web app: a TypeScript app served as static files from `app.feathermark.com` (Cloudflare Pages). Without logging in it is a demo with sample notes that stores nothing; logged in it is a Feather Cloud client that decrypts in the browser. MIT. The design is `../universal/specs/2026-11-12-feathermark-web-design.md`; the phases are 17–21 in `../universal/plans/feather-note-roadmap.md`.
 
+## Code layout (when adding code, or deciding where it goes)
+
+| Folder | Owns |
+|---|---|
+| `src/core/` | Headless, no DOM, tested in Node: ULIDs, the clock, `library/` (the in-memory library, views and counts, search, export, the sample notes), `crypto/` |
+| `src/model/` | `AppModel` (selection, the open note and its 500 ms save, Undo after Trash, search state, empty states, errors), `format.ts` (every string built from data), `line-endings.ts` |
+| `src/ui/` | Preact views. They only read the model's signals and call its actions; behaviour goes in the model. |
+| `src/worker/` | The crypto worker and its client |
+
+- **The rules come from `../universal/specs/data-model.md`** ("Views and sort orders", "Search", "Export"), written from the Apple code in Phase 18. Change the spec first, then the code, so every platform agrees. Search ranking is checked against SQLite FTS5 itself when `sqlite3` is installed (`tests/unit/search.test.ts`).
+- **Sample notes are `origin: 'sample'`;** notes, notebooks and tags people make are `'user'`. Phase 20 must never put a sample item into an account.
+- **A note's text is stored exactly as typed.** A `<textarea>` reports CRLF as LF, so the editor shows `textareaValue(body)` and saves `bodyFromTextarea(value, body)`, which keeps untouched text byte for byte. Any new editor (Phase 19's CodeMirror normalizes line breaks too) must do the same.
+- **Copy:** `../universal/design/ui-copy.md`, section "Web app" (sentence case on the web), and `src/model/format.ts`.
+- **Keyboard shortcuts** are registered in a layout effect, so they work from the first paint. List focus moves at once on arrow keys, never in a later frame.
+
 ## Commands and ports (when running or testing)
 
 | Command | What |
@@ -14,7 +29,7 @@ This repo is the web app: a TypeScript app served as static files from `app.feat
 | `pnpm e2e` | Browser tests (Playwright), `tests/e2e/`, against a fresh build on 8431. `FEATHER_ENGINES=chromium,webkit` picks engines. |
 | `pnpm tokens` | Regenerates `src/ui/tokens.css` from `../universal/design/tokens.json`. |
 | `pnpm spike` | Builds with the Argon2id device page and serves it on 8431. For a phone, open it over HTTPS (see "Device checks"). |
-| `bash scripts/test_all.sh` | Every check in order; must end with `all tests: OK`. |
+| `bash scripts/test_all.sh` | Every check in order, including the first-load size (`scripts/bundle-size.ts`, budget 300 KB gzipped); must end with `all tests: OK`. |
 
 The tests read `../universal/design/tokens.json` and `../universal/test-vectors/`, so `universal` must be checked out next to this repo (or set `FEATHER_TOKENS` and `FEATHER_TEST_VECTORS`).
 
