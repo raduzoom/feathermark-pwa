@@ -1,0 +1,39 @@
+name: ci
+
+# TODO(ci): automatic runs are off to save github.com Actions minutes (2026-11-09).
+# To turn them back on, replace the `on:` block with:
+#   on:
+#     push:
+#       branches: [main]
+#     pull_request:
+# Until then, run the local checks in AGENTS.md before pushing; a manual run is
+# still possible from the Actions tab (Run workflow).
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pwa
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: pwa
+      # The tests read ../universal/design/tokens.json and ../universal/test-vectors/. The universal repo is
+      # private: UNIVERSAL_READ_TOKEN is a fine-grained, read-only token for raduzoom/feather-note-universal,
+      # created by the repo owner. Until that secret exists, this step fails.
+      - uses: actions/checkout@v4
+        with:
+          repository: raduzoom/feather-note-universal
+          path: universal
+          token: ${{ secrets.UNIVERSAL_READ_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: pwa/.node-version
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium firefox webkit
+      - name: All checks (all three engines on Linux)
+        run: FEATHER_ENGINES=chromium,firefox,webkit bash scripts/test_all.sh
