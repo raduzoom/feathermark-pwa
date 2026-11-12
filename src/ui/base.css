@@ -1,0 +1,53 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--c-bg-window);
+  color: var(--c-text-primary);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: default;
+}
+
+:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+}
+
+.logo {
+  border-radius: var(--radius-input);
+  flex-shrink: 0;
+}
+.logo-bg {
+  fill: var(--icon-background);
+}
+.logo-page {
+  fill: var(--icon-page);
+}
+.logo-quill {
+  fill: var(--icon-quill);
+}
+.logo-shaft {
+  fill: none;
+  stroke: var(--icon-quill);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
