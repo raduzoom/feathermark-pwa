@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title>FeatherMark: Argon2id test</title>
+  </head>
+  <body>
+    <main class="spike">
+      <h1>Argon2id test</h1>
+      <p>Races three Argon2id builds on the three password cases from the FeatherMark test vectors (256 MiB each, nine runs) in this browser and times them. On a phone this can take a few minutes. Nothing is sent anywhere.</p>
+      <button type="button" id="run">Run test</button>
+      <output id="summary"></output>
+      <table id="results">
+        <thead><tr><th>Build</th><th>Case</th><th>Result</th><th>Milliseconds</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <h2>Diagnosis</h2>
+      <p>Times a plain JavaScript loop, then Argon2id (one pass) at 8, 32, 128 and 256 MiB, to find where the time goes. About half a minute on a phone.</p>
+      <button type="button" id="diagnose">Run diagnosis</button>
+      <output id="diagnosis"></output>
+      <table id="diagnosis-results">
+        <thead><tr><th>Step</th><th>Result</th><th>Milliseconds</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <p>Copy this and paste it back:</p>
+      <pre id="report"></pre>
+    </main>
+    <script type="module" src="/src/spike/argon2.ts"></script>
+  </body>
+</html>
