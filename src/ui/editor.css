@@ -501,7 +501,7 @@
   min-height: 32px;
   padding: 0 var(--space-8);
   border-radius: var(--radius-code);
-  cursor: default;
+  cursor: pointer;
 }
 .note-editor .cm-editor .block-menu-row[aria-selected='true'] {
   background: var(--c-accent-tint);

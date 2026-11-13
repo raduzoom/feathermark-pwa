@@ -161,6 +161,11 @@ function render(dom: HTMLElement, menu: BlockMenu, view: EditorView) {
       hint.className = 'block-menu-hint'
       hint.textContent = c.hint
       row.append(title, hint)
+      // the pointer moves the selection, as in a native menu (mousemove, so a keyboard scroll under a still pointer doesn't)
+      row.addEventListener('mousemove', () => {
+        const m = menuOf(view.state)
+        if (m && m.selected !== i) view.dispatch({ effects: moveBlockMenu.of(i - m.selected) })
+      })
       row.addEventListener('mousedown', (e) => {
         e.preventDefault() // the editor keeps the focus
         pick(view, id)
