@@ -29,3 +29,6 @@ export class LibraryError extends Error {
     super(detail ? `${kind}: ${detail}` : kind)
   }
 }
+
+// Sync bookkeeping types (Phase 20); they live with the bookkeeping in sync-state.ts.
+export type { RemoteApply, RemoteAttachmentApply, RemoteNoteApply, SyncConflict, SyncItem, SyncKey } from './sync-state.ts'
