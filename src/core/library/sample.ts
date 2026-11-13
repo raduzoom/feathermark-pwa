@@ -1,7 +1,8 @@
-// The demo's sample library: the iPhone app's DemoLibrary.swift, without its image until Phase 19 brings
-// attachments, plus a welcome note. Every item is marked origin 'sample' so it never goes into an account.
+// The demo's sample library: the iPhone app's DemoLibrary.swift, with its picture (Phase 19 brought
+// attachments), plus a welcome note. Every item is marked origin 'sample' so it never goes into an account.
 import type { Clock } from '../clock.ts'
 import type { Library } from './library.ts'
+import { RADIATION_SHIELD_PNG_BASE64, RADIATION_SHIELD_PNG_SHA256 } from './sample-image.ts'
 
 const MINUTE = 60_000
 const DAY = 24 * 60 * MINUTE
@@ -42,9 +43,16 @@ export function seedSampleLibrary(library: Library, clock: Clock): void {
   note('Lisbon, spring trip', 'Flights land at 10:40. Tram 28 from Martim Moniz early, before the queues.\n\nSee the [tram map](https://www.carris.pt) before going.', travel.id, ago(3 * DAY))
   const groceries = note('Groceries', '- [ ] Oat milk\n- [ ] Lemons\n- [x] Rye flour', personal.id, ago(180 * MINUTE))
   library.setPinned(groceries.id, true)
+  const shield = library.addAttachment({
+    bytes: Uint8Array.from(atob(RADIATION_SHIELD_PNG_BASE64), (c) => c.charCodeAt(0)),
+    filename: 'radiation-shield.png',
+    mime: 'image/png',
+    sha256: RADIATION_SHIELD_PNG_SHA256,
+    origin: s,
+  })
   const weather = note(
     'Weather station build',
-    'Goal: reliable readings **through winter**. The sensor is a Bosch `BME280`; the old DHT22 drifted.\n\n## Parts\n\n- Raspberry Pi Zero 2 W\n- Radiation shield\n- [x] Order the sensor\n- [ ] Print the mount\n\n> Mount it two metres up, away from the wall.\n\n```swift\nlet celsius = Double(raw) / 100\n```',
+    `Goal: reliable readings **through winter**. The sensor is a Bosch \`BME280\`; the old DHT22 drifted.\n\n![Radiation shield](feather://attachment/${shield.id})\n\n## Parts\n\n- Raspberry Pi Zero 2 W\n- Radiation shield\n- [x] Order the sensor\n- [ ] Print the mount\n\n> Mount it two metres up, away from the wall.\n\n\`\`\`swift\nlet celsius = Double(raw) / 100\n\`\`\``,
     home.id,
     ago(20 * MINUTE),
     [hardware.id],

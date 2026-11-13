@@ -7,14 +7,22 @@
   "packageManager": "pnpm@12.15.0",
   "scripts": {
     "dev": "vite --port 8430 --strictPort",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit -p tsconfig.build.json && vite build",
+    "typecheck": "tsc --noEmit",
     "preview": "vite preview --port 8431 --strictPort",
     "test": "vitest run",
     "e2e": "playwright test",
+    "e2e:live": "playwright test",
     "tokens": "node scripts/tokens.ts",
     "spike": "FEATHER_SPIKE=1 vite build && vite preview --port 8431 --strictPort --host"
   },
   "dependencies": {
+    "@codemirror/commands": "6.11.1",
+    "@codemirror/language": "6.13.1",
+    "@codemirror/state": "6.7.6",
+    "@codemirror/view": "6.43.15",
+    "@lezer/common": "1.5.5",
+    "@lezer/markdown": "1.8.1",
     "@preact/signals": "2.11.4",
     "hash-wasm": "4.13.0",
     "preact": "11.2.0"

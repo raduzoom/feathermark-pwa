@@ -1,5 +1,7 @@
 // A note as a Markdown file: data-model.md "Export to a Markdown folder" (front matter, file names), as FeatherCore's
 // FrontMatter.swift and FileNames.swift write them.
+import type { Attachment } from './attachments.ts'
+import { percentEncodePathComponent, rewriteAttachmentLinks, splitExtension, uniqueName } from './links.ts'
 import { nameOrder } from './names.ts'
 import type { Note } from './types.ts'
 
@@ -76,4 +78,28 @@ export function sanitizeFileName(name: string): string {
 
 export function noteFileName(note: Note): string {
   return sanitizeFileName(note.title.trim() === '' ? 'Untitled' : note.title) + '.md'
+}
+
+export type NoteDownload =
+  | { kind: 'md'; fileName: string; text: string }
+  | { kind: 'zip'; fileName: string; entries: Array<{ path: string; bytes: Uint8Array }> }
+
+/** "Download .md": the note as `<name>.md`, or, when it uses attachments, `<name>.zip` holding `<name>.md` and
+ *  `_attachments/<name>/…` with its links rewritten to those files (data-model.md "Export to a Markdown folder"). */
+export function noteDownload(note: Note, tagNames: string[], attachmentsOf: (body: string) => Attachment[]): NoteDownload {
+  const fileName = noteFileName(note)
+  const used = attachmentsOf(note.body)
+  if (used.length === 0) return { kind: 'md', fileName, text: noteMarkdown(note, tagNames) }
+  const base = fileName.slice(0, -'.md'.length)
+  const taken = new Set<string>()
+  const paths = new Map<string, string>()
+  const entries: Array<{ path: string; bytes: Uint8Array }> = []
+  for (const a of used) {
+    const [stem, ext] = splitExtension(sanitizeFileName(a.filename))
+    const name = uniqueName(stem, ext, taken)
+    paths.set(a.id, ['_attachments', base, name].map(percentEncodePathComponent).join('/'))
+    entries.push({ path: `_attachments/${base}/${name}`, bytes: a.bytes })
+  }
+  const text = noteMarkdown({ ...note, body: rewriteAttachmentLinks(note.body, paths) }, tagNames)
+  return { kind: 'zip', fileName: base + '.zip', entries: [{ path: fileName, bytes: new TextEncoder().encode(text) }, ...entries] }
 }

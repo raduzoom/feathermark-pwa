@@ -37,7 +37,7 @@ test('the sample library matches the iPhone demo plus the welcome note', () => {
   expect(clock() - byTitle('Bread notes').modified).toBe(8 * DAY)
   expect(clock() - byTitle('Groceries').modified).toBe(180 * 60_000)
   expect(name(byTitle('Weather station build').notebookId)).toBe('Home')
-  expect(byTitle('Weather station build').body).not.toContain('feather://')
+  expect(byTitle('Weather station build').body).toContain('![Radiation shield](feather://attachment/') // the image is back (Phase 19)
   expect(byTitle('Reading list 2027').body).toBe('- [ ] *The Overstory*\n- [ ] *Braiding Sweetgrass*\n- [x] *Piranesi*')
   expect(byTitle('Welcome to the FeatherMark demo').notebookId).toBeNull()
 })

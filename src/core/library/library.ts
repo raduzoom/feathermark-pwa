@@ -1,5 +1,7 @@
 // The in-memory library: the web counterpart of FeatherCore. Rules: data-model.md "Views and sort orders", "Trash".
 import type { Clock } from '../clock.ts'
+import type { Attachment } from './attachments.ts'
+import { attachmentRefs } from './links.ts'
 import { newUlid } from '../ulid.ts'
 import { nameOrder, preview, tagKey } from './names.ts'
 import { buildQuery, SearchIndex } from './search.ts'
@@ -23,6 +25,7 @@ export class Library {
   private notesById = new Map<string, Note>()
   private notebooksById = new Map<string, Notebook>()
   private tagsById = new Map<string, Tag>()
+  private attachmentsById = new Map<string, Attachment>()
   private listeners = new Set<() => void>()
   private index = new SearchIndex()
   version = 0
@@ -44,6 +47,45 @@ export class Library {
   private changed(): void {
     this.version++
     for (const l of [...this.listeners]) l()
+  }
+
+  // Attachments (data-model.md "Attachment"). Kept in memory with their bytes; the caller hashes them first.
+
+  addAttachment(o: { bytes: Uint8Array; filename: string; mime: string; sha256: string; origin?: Origin }): Attachment {
+    const created = this.clock()
+    const a: Attachment = {
+      id: newUlid(() => created),
+      filename: o.filename,
+      mime: o.mime,
+      size: o.bytes.length,
+      sha256: o.sha256,
+      created,
+      origin: o.origin ?? 'user',
+      bytes: o.bytes,
+    }
+    this.attachmentsById.set(a.id, a)
+    this.changed()
+    return a
+  }
+
+  attachment(id: string): Attachment | null {
+    return this.attachmentsById.get(id) ?? null
+  }
+
+  /** The attachments `body` references outside code, in order, each once; unknown ids are left out. */
+  attachmentsOf(body: string): Attachment[] {
+    const out: Attachment[] = []
+    for (const r of attachmentRefs(body)) {
+      const a = this.attachmentsById.get(r.id)
+      if (a && !out.includes(a)) out.push(a)
+    }
+    return out
+  }
+
+  /** Whether any note, live or in the Trash, references the attachment. */
+  attachmentInUse(id: string): boolean {
+    for (const n of this.notesById.values()) if (attachmentRefs(n.body).some((r) => r.id === id)) return true
+    return false
   }
 
   // Notes

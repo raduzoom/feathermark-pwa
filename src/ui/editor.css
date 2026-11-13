@@ -97,8 +97,7 @@
   font-weight: var(--type-note-title-weight);
   letter-spacing: var(--type-note-title-tracking);
 }
-.note-title:focus,
-.note-body:focus {
+.note-title:focus {
   outline: none;
 }
 .edited {
@@ -106,24 +105,332 @@
   font-size: var(--type-ui-meta-size);
   color: var(--c-text-secondary);
 }
-.note-body {
+/* The body editor (CodeMirror). Its base theme is injected by CodeMirror itself; these rules sit on top. */
+.note-editor .cm-editor {
   min-height: 60vh;
-  border: 0;
-  padding: 0;
-  resize: none;
   background: transparent;
   color: var(--c-text-body);
   font-family: var(--font-serif);
   font-size: var(--type-body-size);
   line-height: var(--type-body-line);
-  field-sizing: content;
 }
-.note-title::placeholder,
-.note-body::placeholder {
+.note-editor .cm-editor.cm-focused {
+  outline: none;
+}
+.note-editor .cm-editor .cm-scroller {
+  font-family: inherit;
+  line-height: inherit;
+  overflow: visible;
+}
+.note-editor .cm-editor .cm-content {
+  padding: 0;
+  caret-color: var(--c-text-primary);
+}
+.note-editor .cm-editor .cm-line {
+  padding: 0;
+}
+.note-title::placeholder {
   color: var(--c-text-placeholder);
 }
 .editor-empty {
   margin: auto;
   padding: var(--space-64);
   color: var(--c-text-secondary);
+}
+
+/* Live preview (specs/editor.md "Live preview"). Hidden markers are replaced by CodeMirror, never removed. */
+.note-editor .cm-editor .cm-marker {
+  font-family: var(--font-mono);
+  font-size: var(--type-md-marker-size);
+  color: var(--c-md-marker);
+}
+.note-editor .cm-editor .cm-h1,
+.note-editor .cm-editor .cm-h2,
+.note-editor .cm-editor .cm-h3,
+.note-editor .cm-editor .cm-h4,
+.note-editor .cm-editor .cm-h5,
+.note-editor .cm-editor .cm-h6 {
+  color: var(--c-text-primary);
+  font-weight: var(--type-md-h4-h6-weight);
+}
+.note-editor .cm-editor .cm-h1 {
+  font-size: var(--type-md-h1-size);
+  line-height: var(--type-md-h1-line);
+  font-weight: var(--type-md-h1-weight);
+  padding-top: var(--space-8);
+}
+.note-editor .cm-editor .cm-h2 {
+  font-size: var(--type-md-h2-size);
+  line-height: var(--type-md-h2-line);
+  font-weight: var(--type-md-h2-weight);
+  padding-top: var(--space-8);
+}
+.note-editor .cm-editor .cm-h3 {
+  font-size: var(--type-md-h3-size);
+  line-height: var(--type-md-h3-line);
+  font-weight: var(--type-md-h3-weight);
+}
+.note-editor .cm-editor .cm-h6 {
+  color: var(--c-text-secondary);
+}
+.note-editor .cm-editor .cm-strong {
+  font-weight: 700;
+}
+.note-editor .cm-editor .cm-em {
+  font-style: italic;
+}
+.note-editor .cm-editor .cm-strike {
+  text-decoration: line-through;
+}
+.note-editor .cm-editor .cm-code-inline,
+.note-editor .cm-editor .cm-html {
+  font-family: var(--font-mono);
+  font-size: var(--type-code-inline-size);
+  background: var(--c-md-inline-code);
+  border-radius: var(--radius-code);
+}
+.note-editor .cm-editor .cm-link {
+  color: var(--c-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.note-editor .cm-editor.cm-live .cm-link {
+  cursor: text;
+}
+
+/* Lists: the line class indents the item; the bullet, box or number sits in the indent. */
+.note-editor .cm-editor .cm-list {
+  padding-left: calc(var(--space-24) * var(--depth, 1));
+}
+.note-editor .cm-editor .cm-list-d0 { --depth: 1; }
+.note-editor .cm-editor .cm-list-d1 { --depth: 2; }
+.note-editor .cm-editor .cm-list-d2 { --depth: 3; }
+.note-editor .cm-editor .cm-list-d3 { --depth: 4; }
+.note-editor .cm-editor .cm-list-d4 { --depth: 5; }
+.note-editor .cm-editor .cm-list-d5 { --depth: 6; }
+.note-editor .cm-editor .cm-list-d6 { --depth: 7; }
+.note-editor .cm-editor .cm-list-d7 { --depth: 8; }
+.note-editor .cm-editor .cm-list-d8 { --depth: 9; }
+.note-editor .cm-editor .cm-bullet,
+.note-editor .cm-editor .cm-checkbox {
+  display: inline-block;
+  width: var(--space-24);
+  margin-left: calc(-1 * var(--space-24));
+  color: var(--c-text-secondary);
+}
+.note-editor .cm-editor .cm-checkbox {
+  position: relative;
+  height: 1em;
+  vertical-align: -0.12em;
+  cursor: pointer;
+}
+.note-editor .cm-editor .cm-checkbox::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 1em;
+  border: 1.5px solid var(--c-text-secondary);
+  border-radius: var(--radius-checkbox);
+}
+.note-editor .cm-editor .cm-checkbox-on::before {
+  background: var(--c-accent);
+  border-color: var(--c-accent);
+}
+.note-editor .cm-editor .cm-checkbox-on::after {
+  content: '';
+  position: absolute;
+  left: 0.32em;
+  top: 0.12em;
+  width: 0.3em;
+  height: 0.55em;
+  border: solid var(--c-accent-fill-on-fill);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.note-editor .cm-editor .cm-list-number {
+  display: inline-block;
+  min-width: var(--space-24);
+  margin-left: calc(-1 * var(--space-24));
+  color: var(--c-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.note-editor .cm-editor .cm-done {
+  color: var(--c-text-secondary);
+}
+
+/* Quotes */
+.note-editor .cm-editor .cm-quote {
+  background: var(--c-md-quote);
+  border-left: 3px solid var(--c-accent);
+  padding-left: calc(var(--space-16) * var(--qdepth, 1));
+  font-style: italic;
+}
+.note-editor .cm-editor .cm-quote-d2 { --qdepth: 2; }
+.note-editor .cm-editor .cm-quote-d3 { --qdepth: 3; }
+.note-editor .cm-editor .cm-quote-d4,
+.note-editor .cm-editor .cm-quote-d5,
+.note-editor .cm-editor .cm-quote-d6,
+.note-editor .cm-editor .cm-quote-d7,
+.note-editor .cm-editor .cm-quote-d8 { --qdepth: 4; }
+
+/* Code blocks */
+.note-editor .cm-editor .cm-code {
+  font-family: var(--font-mono);
+  font-size: var(--type-code-block-size);
+  line-height: var(--type-code-block-line);
+  background: var(--c-md-code-block);
+  color: var(--c-md-code-block-text);
+  padding: 0 var(--space-16);
+}
+.note-editor .cm-editor .cm-code-first {
+  border-top-left-radius: var(--radius-code);
+  border-top-right-radius: var(--radius-code);
+  padding-top: var(--space-8);
+}
+.note-editor .cm-editor .cm-code-last {
+  border-bottom-left-radius: var(--radius-code);
+  border-bottom-right-radius: var(--radius-code);
+  padding-bottom: var(--space-8);
+}
+.note-editor .cm-editor .cm-line.cm-fence-hidden {
+  height: 0;
+  padding: 0;
+  overflow: hidden;
+  font-size: 0;
+  line-height: 0;
+}
+.note-editor .cm-editor .cm-code .cm-marker {
+  color: var(--c-md-code-block-syntax-comment);
+}
+.note-editor .cm-editor .cm-tok-keyword { color: var(--c-md-code-block-syntax-keyword); }
+.note-editor .cm-editor .cm-tok-string { color: var(--c-md-code-block-syntax-string); }
+.note-editor .cm-editor .cm-tok-comment { color: var(--c-md-code-block-syntax-comment); }
+
+/* Rules */
+.note-editor .cm-editor .cm-hr {
+  position: relative;
+}
+.note-editor .cm-editor .cm-hr::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  border-top: 1px solid var(--c-text-placeholder);
+}
+
+/* Tables, HTML and other source */
+.note-editor .cm-editor .cm-source {
+  font-family: var(--font-mono);
+  font-size: var(--type-code-inline-size);
+  background: var(--c-md-inline-code);
+}
+
+/* Attachments: images and chips */
+.note-editor .cm-editor .cm-image {
+  display: block;
+  margin: var(--space-8) 0;
+}
+.note-editor .cm-editor .cm-image img {
+  display: block;
+  max-width: 100%;
+  max-height: 480px;
+  border-radius: var(--radius-thumbnail);
+}
+.note-editor .cm-editor .cm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  height: var(--h-chip);
+  padding: 0 var(--space-8) 0 var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--c-accent-tint);
+  color: var(--c-text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--type-ui-label-size);
+  font-weight: 600;
+  vertical-align: middle;
+  cursor: pointer;
+}
+.note-editor .cm-editor .cm-chip-badge {
+  font-family: var(--font-mono);
+  font-size: var(--type-ui-overline-size);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-code);
+  background: var(--c-surface-raised);
+}
+.note-editor .cm-editor .cm-chip-missing {
+  background: var(--c-warning-tint);
+  color: var(--c-warning-text);
+  cursor: default;
+}
+
+/* Raw mode: every character, in the monospace face */
+.note-editor .cm-editor.cm-raw .cm-content {
+  font-family: var(--font-mono);
+  font-size: var(--type-code-inline-size);
+}
+.note-editor .cm-editor .cm-raw-heading {
+  font-weight: 700;
+}
+
+/* The block menu ("+" in the margin, "/" at a line start). CodeMirror places the tooltip. */
+.note-editor .cm-editor .cm-line {
+  position: relative;
+}
+.note-editor .cm-editor .cm-insert-block {
+  position: absolute;
+  left: calc(-1 * var(--space-32));
+  top: 50%;
+  translate: 0 -50%;
+  width: var(--space-24);
+  height: var(--space-24);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-code);
+  background: transparent;
+  color: var(--c-text-secondary);
+  font: 400 18px/1 var(--font-sans);
+  cursor: pointer;
+}
+.note-editor .cm-editor .cm-insert-block::before {
+  content: '+'; /* drawn, not text, so the line's text stays the note's */
+}
+.note-editor .cm-editor .cm-insert-block:hover {
+  background: var(--c-accent-tint);
+  color: var(--c-text-primary);
+}
+.note-editor .cm-editor .cm-tooltip.cm-tooltip {
+  border: 0;
+  background: transparent;
+}
+.note-editor .cm-editor .block-menu {
+  min-width: 240px;
+  max-height: 50vh;
+  overflow-y: auto;
+  padding: var(--space-4);
+  border-radius: var(--radius-menu);
+  background: var(--c-bg-window);
+  box-shadow: 0 8px 32px var(--c-line-hairline), inset 0 0 0 1px var(--c-line-hairline);
+  font-family: var(--font-sans);
+  font-size: var(--type-ui-label-size);
+  color: var(--c-text-primary);
+}
+.note-editor .cm-editor .block-menu-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+  min-height: 32px;
+  padding: 0 var(--space-8);
+  border-radius: var(--radius-code);
+  cursor: default;
+}
+.note-editor .cm-editor .block-menu-row[aria-selected='true'] {
+  background: var(--c-accent-tint);
+}
+.note-editor .cm-editor .block-menu-hint {
+  font-family: var(--font-mono);
+  font-size: var(--type-md-marker-size);
+  color: var(--c-md-marker);
 }

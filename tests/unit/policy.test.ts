@@ -20,5 +20,14 @@ test.each(['http://zoomitthemes.go.ro', 'https://zoomitthemes.go.ro/v1', 'zoomit
 test('the headers file is the same headers, in Pages form', () => {
   const lines = headersFile().trimEnd().split('\n')
   expect(lines[0]).toBe('/*')
-  expect(lines.slice(1)).toEqual(Object.entries(securityHeaders()).map(([k, v]) => `  ${k}: ${v}`))
+  const n = Object.keys(securityHeaders()).length
+  expect(lines.slice(1, 1 + n)).toEqual(Object.entries(securityHeaders()).map(([k, v]) => `  ${k}: ${v}`))
+})
+
+test('hashed assets are cached for a year; the page itself keeps Pages’ default (revalidate)', () => {
+  const text = headersFile()
+  const blocks = text.trimEnd().split(/\n(?=\/)/)
+  expect(blocks[0]!.startsWith('/*\n')).toBe(true)
+  expect(blocks[0]).not.toContain('Cache-Control')
+  expect(blocks[1]).toBe('/assets/*\n  Cache-Control: public, max-age=31536000, immutable')
 })

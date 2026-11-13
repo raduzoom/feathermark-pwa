@@ -1,0 +1,40 @@
+diff --git a/dist/index.cjs b/dist/index.cjs
+index 4a361b0d03d5ed263f09e3eeebbbc2f1b6375ec8..e0ab08d483acb05489ef2d7296fb4042e322f53d 100644
+--- a/dist/index.cjs
++++ b/dist/index.cjs
+@@ -1514,9 +1514,14 @@ const DefaultInline = {
+                 let content = cx.takeContent(i);
+                 let link = cx.parts[i] = finishLink(cx, content, part.type == LinkStart ? Type.Link : Type.Image, part.from, start + 1);
+                 // Set any open-link markers before this link to invalid.
++                // FeatherMark: walk back only to the previous link. Every start marker before it was set invalid
++                // when that link was made, and the mark is never undone, so going further only made a paragraph of
++                // many links quadratic (a pasted 2 MB line took 50 s).
+                 if (part.type == LinkStart)
+-                    for (let j = 0; j < i; j++) {
++                    for (let j = i - 1; j >= 0; j--) {
+                         let p = cx.parts[j];
++                        if (p instanceof Element && p.type == Type.Link)
++                            break;
+                         if (p instanceof InlineDelimiter && p.type == LinkStart)
+                             p.side = 0 /* Mark.None */;
+                     }
+diff --git a/dist/index.js b/dist/index.js
+index bcaae772b1e92dd3f279b5c0b6607a3df0a2b20a..5a8686e8d458a496078da7573681e7e6b9152bab 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -1512,9 +1512,14 @@ const DefaultInline = {
+                 let content = cx.takeContent(i);
+                 let link = cx.parts[i] = finishLink(cx, content, part.type == LinkStart ? Type.Link : Type.Image, part.from, start + 1);
+                 // Set any open-link markers before this link to invalid.
++                // FeatherMark: walk back only to the previous link. Every start marker before it was set invalid
++                // when that link was made, and the mark is never undone, so going further only made a paragraph of
++                // many links quadratic (a pasted 2 MB line took 50 s).
+                 if (part.type == LinkStart)
+-                    for (let j = 0; j < i; j++) {
++                    for (let j = i - 1; j >= 0; j--) {
+                         let p = cx.parts[j];
++                        if (p instanceof Element && p.type == Type.Link)
++                            break;
+                         if (p instanceof InlineDelimiter && p.type == LinkStart)
+                             p.side = 0 /* Mark.None */;
+                     }

@@ -5,6 +5,7 @@ import { DialogHost } from './Dialog.tsx'
 import { EditorPane } from './EditorPane.tsx'
 import { LibraryPanel } from './LibraryPanel.tsx'
 import { Logo } from './Logo.tsx'
+import { preventFileNavigation } from '../editor/attachments.ts'
 import { NoteList } from './NoteList.tsx'
 import { ErrorToast, UndoToast } from './Toasts.tsx'
 
@@ -54,6 +55,9 @@ export function App({ model }: { model: AppModel }) {
     return () => desktop.removeEventListener('change', onChange)
   }, [])
 
+  // A file dropped outside the note would replace the demo in the tab.
+  useLayoutEffect(() => preventFileNavigation(), [])
+
   // Alt+N new note (browsers keep Ctrl/⌘+N), Ctrl/⌘+K search. A layout effect, so the keys work from the first
   // paint: a plain effect can run after the page has loaded and miss the first key press.
   useLayoutEffect(() => {
@@ -61,7 +65,8 @@ export function App({ model }: { model: AppModel }) {
       if (e.altKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyN') {
         e.preventDefault()
         newNote()
-      } else if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'k') {
+      } else if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'k' && !e.defaultPrevented) {
+        // the note body takes Ctrl/⌘+K for a link and marks the event handled
         e.preventDefault()
         search.current?.focus()
       }
@@ -134,7 +139,7 @@ export function App({ model }: { model: AppModel }) {
             </button>
           </span>
         ) : (
-          <a class="demo-link" href="https://feathermark.com/download" rel="noopener">
+          <a class="demo-link" href="https://feathermark.com/download" target="_blank" rel="noopener noreferrer">
             Get FeatherMark
           </a>
         )}

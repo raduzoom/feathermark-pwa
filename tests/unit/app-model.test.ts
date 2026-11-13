@@ -262,3 +262,14 @@ test('a search hit edited until it no longer matches stays open through the next
   m.togglePin(n.id)
   expect(m.openNote.value?.id).toBe(n.id)
 })
+
+test('Markdown switches the editor between live preview and the raw text, for every note', () => {
+  start()
+  expect(m.editorRaw.value).toBe(false)
+  m.toggleRaw()
+  expect(m.editorRaw.value).toBe(true)
+  m.newNote()
+  expect(m.editorRaw.value).toBe(true)
+  m.toggleRaw()
+  expect(m.editorRaw.value).toBe(false)
+})

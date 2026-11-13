@@ -2,10 +2,12 @@
 // empty states and errors. The views only read these signals and call these actions.
 import { batch, computed, signal, type ReadonlySignal } from '@preact/signals'
 import { systemClock, type Clock } from '../core/clock.ts'
+import { attachmentId, attachmentSnippet, MAX_ATTACHMENT_BYTES, sha256Hex, type Attachment } from '../core/library/attachments.ts'
 import type { Library } from '../core/library/library.ts'
 import { LibraryError, type Counts, type Note, type Notebook, type NoteSummary, type Tag, type View } from '../core/library/types.ts'
-import { errorMessage } from './format.ts'
+import { errorMessage, tooLargeMessage, unreadableMessage } from './format.ts'
 
+export type ResolvedAttachment = { objectUrl: string; filename: string; mime: string; image: boolean }
 export type Row = { note: NoteSummary; snippet: string | null; matches: Array<[number, number]> }
 export type EmptyState =
   | { kind: 'firstLaunch' }
@@ -32,6 +34,8 @@ export type AppModel = {
   undo: ReadonlySignal<{ noteId: string; title: string } | null>
   error: ReadonlySignal<string | null>
   titleWantsFocus: ReadonlySignal<boolean>
+  /** "Markdown" pressed: the editor shows the raw text (the Mac's editor mode; it stays as notes change). */
+  editorRaw: ReadonlySignal<boolean>
   now: () => number
   select(v: View): void
   selectNote(id: string | null): void
@@ -60,6 +64,14 @@ export type AppModel = {
   setSearchNotebook(id: string | null): void
   toggleSearchTag(id: string): void
   focusTitleDone(): void
+  toggleRaw(): void
+  /** Adds dropped, pasted or picked files as attachments; returns the Markdown for each one added. Files over the
+   *  demo's limit are refused with a message. */
+  addFiles(files: File[]): Promise<string[]>
+  /** The file behind a `feather://attachment/<id>` URL, with an object URL made once; null if unknown. */
+  attachmentUrl(url: string): ResolvedAttachment | null
+  /** The attachments a body references, for downloads. */
+  attachmentsOf(body: string): Attachment[]
   clearError(): void
   dispose(): void
 }
@@ -87,6 +99,16 @@ export function createAppModel(
   const undo = signal<{ noteId: string; title: string } | null>(null)
   const error = signal<string | null>(null)
   const titleWantsFocus = signal(false)
+  const editorRaw = signal(false)
+  // Object URLs for attachments, made on first use and kept while a note uses them.
+  const objectUrls = new Map<string, string>()
+  const releaseUnusedUrls = () => {
+    for (const [id, u] of objectUrls)
+      if (!library.attachmentInUse(id)) {
+        URL.revokeObjectURL(u)
+        objectUrls.delete(id)
+      }
+  }
   let saveTimer: unknown = null
   let undoTimer: unknown = null
 
@@ -232,6 +254,10 @@ export function createAppModel(
     undo,
     error,
     titleWantsFocus,
+    editorRaw,
+    toggleRaw() {
+      editorRaw.value = !editorRaw.value
+    },
     now: clock,
     select(v) {
       change(() => {
@@ -298,9 +324,43 @@ export function createAppModel(
     },
     deletePermanently(id) {
       change(() => library.deleteNotePermanently(id))
+      releaseUnusedUrls()
     },
     emptyTrash() {
       change(() => library.emptyTrash())
+      releaseUnusedUrls()
+    },
+    async addFiles(files) {
+      const snippets: string[] = []
+      for (const f of files) {
+        if (f.size > MAX_ATTACHMENT_BYTES) {
+          error.value = tooLargeMessage(f.name)
+          continue
+        }
+        let bytes: Uint8Array
+        try {
+          bytes = new Uint8Array(await f.arrayBuffer())
+        } catch {
+          // a dropped folder, or a file the browser can't read: skip it, keep the rest
+          error.value = unreadableMessage(f.name)
+          continue
+        }
+        const a = library.addAttachment({ bytes, filename: f.name, mime: f.type || 'application/octet-stream', sha256: await sha256Hex(bytes) })
+        snippets.push(attachmentSnippet(a))
+      }
+      return snippets
+    },
+    attachmentsOf: (body) => library.attachmentsOf(body),
+    attachmentUrl(url) {
+      const id = attachmentId(url)
+      const a = id ? library.attachment(id) : null
+      if (!a) return null
+      let objectUrl = objectUrls.get(a.id)
+      if (!objectUrl) {
+        objectUrl = URL.createObjectURL(new Blob([a.bytes as Uint8Array<ArrayBuffer>], { type: a.mime }))
+        objectUrls.set(a.id, objectUrl)
+      }
+      return { objectUrl, filename: a.filename, mime: a.mime, image: a.mime.toLowerCase().startsWith('image/') }
     },
     createNotebook: (name, parentId) => change(() => (name.trim() === '' ? invalid() : library.createNotebook(name, parentId))),
     renameNotebook(id, name) {

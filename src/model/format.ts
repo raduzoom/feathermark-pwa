@@ -81,6 +81,16 @@ export function deletePermanentlyConfirmation(title: string): Confirmation {
   return { title: `Delete “${displayTitle(title)}” permanently?`, message: "This can't be undone.", button: 'Delete permanently' }
 }
 
+/** A file over the demo's attachment limit (ui-copy.md "Web app", Editor). */
+export function tooLargeMessage(fileName: string): string {
+  return `“${fileName}” is too large for the demo. Files can be up to 25 MB.`
+}
+
+/** A dropped folder or a file the browser can't read (ui-copy.md "Web app", Editor). */
+export function unreadableMessage(fileName: string): string {
+  return `“${fileName}” couldn’t be read.`
+}
+
 export function errorMessage(e: unknown, tagName?: string): string {
   if (e instanceof LibraryError) {
     switch (e.kind) {

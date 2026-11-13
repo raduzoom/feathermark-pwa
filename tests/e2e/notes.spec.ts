@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs'
 import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
+import { downloadedBody } from './support/note-text'
+import { paste } from './support/paste'
 
 const library = (page: Page) => page.getByRole('navigation', { name: 'Library' })
 const list = (page: Page) => page.getByRole('listbox', { name: 'Notes' })
@@ -29,21 +31,24 @@ test('typing then switching keeps the text', async ({ page }) => {
   await open(page, 'Groceries')
   await bodyBox(page).click()
   await page.keyboard.press('ControlOrMeta+End')
-  await page.keyboard.type('\n- [ ] Coffee')
+  // Return continues the to-do list (specs/editor.md "Commands")
+  await page.keyboard.type('\nCoffee')
   await open(page, 'Bread notes')
   await open(page, 'Groceries')
-  await expect(bodyBox(page)).toHaveValue('- [ ] Oat milk\n- [ ] Lemons\n- [x] Rye flour\n- [ ] Coffee')
+  expect(await downloadedBody(page)).toBe('- [ ] Oat milk\n- [ ] Lemons\n- [x] Rye flour\n- [ ] Coffee')
 })
 
 test('the title and body keep exactly what was typed', async ({ page }) => {
   await page.keyboard.press('Alt+n')
   await page.keyboard.type('  Spaces  ')
   await bodyBox(page).click()
-  await bodyBox(page).fill('a\tb  \n\nCafé\n')
+  // pasted, not fill(): Chromium's own editing turns a filled tab into a span with an inline style, which the
+  // policy refuses; people's typing, pasting and dropping all go through CodeMirror
+  await paste(page, { text: 'a\tb  \n\nCafé\n' })
   await open(page, 'Groceries')
   await open(page, 'Spaces')
   await expect(titleBox(page)).toHaveValue('  Spaces  ')
-  await expect(bodyBox(page)).toHaveValue('a\tb  \n\nCafé\n')
+  expect(await downloadedBody(page)).toBe('a\tb  \n\nCafé\n')
 })
 
 test('pin, tags and move change the lists and counts', async ({ page }) => {
@@ -77,7 +82,7 @@ test('a trashed note is read-only until restored', async ({ page }) => {
   await library(page).getByRole('button', { name: 'Trash', exact: true }).click()
   await open(page, 'Old draft')
   await expect(page.getByText('This note is in the Trash')).toBeVisible()
-  await expect(bodyBox(page)).toHaveAttribute('readonly', '')
+  await expect(bodyBox(page)).toHaveAttribute('aria-readonly', 'true')
   await page.getByRole('button', { name: 'Restore note' }).click()
   await expect(list(page).getByRole('option')).toHaveCount(0)
   await library(page).getByRole('button', { name: 'Personal', exact: true }).click()

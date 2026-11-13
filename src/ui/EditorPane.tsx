@@ -1,14 +1,15 @@
-// The open note: breadcrumb, toolbar, title, edited line and the plain Markdown body (live preview is Phase 19).
+// The open note: breadcrumb, toolbar, title, edited line and the Markdown editor.
 import { useLayoutEffect, useRef } from 'preact/hooks'
-import { noteFileName, noteMarkdown } from '../core/library/export.ts'
+import { noteDownload } from '../core/library/export.ts'
+import { zipStored } from '../core/zip.ts'
 import type { Note } from '../core/library/types.ts'
 import type { AppModel } from '../model/app-model.ts'
 import { editedLine } from '../model/format.ts'
-import { bodyFromTextarea, textareaValue } from '../model/line-endings.ts'
 import * as act from './actions.ts'
-import { saveText } from './download.ts'
+import { saveBytes, saveText } from './download.ts'
 import { notebookTree } from './LibraryPanel.tsx'
 import { MenuButton } from './Menu.tsx'
+import { NoteEditor } from './NoteEditor.tsx'
 
 export function EditorPane({ model, onBack }: { model: AppModel; onBack: () => void }) {
   const note = model.openNote.value
@@ -31,7 +32,6 @@ export function EditorPane({ model, onBack }: { model: AppModel; onBack: () => v
 
   const draft = model.draft.value
   const title = draft?.title ?? note.title
-  const body = draft?.body ?? note.body
   const trashed = note.trashedAt !== null
   const path: string[] = []
   for (let id = note.notebookId; id; ) {
@@ -86,17 +86,7 @@ export function EditorPane({ model, onBack }: { model: AppModel; onBack: () => v
             }}
           />
           <p class="edited">{editedLine(note.modified, model.now())}</p>
-          <textarea
-            id="note-body"
-            class="note-body"
-            aria-label="Note"
-            placeholder="Start writing…"
-            value={textareaValue(body)}
-            readOnly={trashed}
-            spellcheck
-            autocapitalize="sentences"
-            onInput={(e) => model.editBody(bodyFromTextarea(e.currentTarget.value, body))}
-          />
+          <NoteEditor model={model} />
         </div>
       </div>
     </div>
@@ -108,7 +98,9 @@ function Toolbar({ model, note }: { model: AppModel; note: Note }) {
     model.flush()
     const n = model.openNote.value!
     const tagNames = model.tags.value.filter((t) => n.tagIds.includes(t.id)).map((t) => t.name)
-    saveText(noteFileName(n), noteMarkdown(n, tagNames))
+    const d = noteDownload(n, tagNames, (body) => model.attachmentsOf(body))
+    if (d.kind === 'md') saveText(d.fileName, d.text)
+    else saveBytes(d.fileName, zipStored(d.entries, n.modified), 'application/zip')
   }
   return (
     <div role="toolbar" aria-label="Note" class="toolbar">
@@ -145,6 +137,9 @@ function Toolbar({ model, note }: { model: AppModel; note: Note }) {
           })),
         ]}
       />
+      <button type="button" class="tool" aria-pressed={model.editorRaw.value} onClick={() => model.toggleRaw()}>
+        Markdown
+      </button>
       <button type="button" class="tool" onClick={download}>
         Download .md
       </button>
