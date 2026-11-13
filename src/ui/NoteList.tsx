@@ -1,8 +1,10 @@
 // The note list: heading, the in-view search field, the scope chip, and a listbox of rows (or an empty state).
 import type { ComponentChildren } from 'preact'
-import { useRef } from 'preact/hooks'
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import type { AppModel, Row } from '../model/app-model.ts'
 import { noteMeta, rowLabel, trashMeta } from '../model/format.ts'
+import * as act from './actions.ts'
+import { firstItem, MenuList, type MenuItem } from './Menu.tsx'
 
 const TINTS = 4
 function tint(id: string): number {
@@ -45,8 +47,43 @@ export function NoteList({ model, onOpen, onEnter }: { model: AppModel; onOpen: 
     if (focus) focusRow(id)
   }
 
+  // The row menu: right-click, Shift+F10 or the Menu key. Escape returns to the row.
+  const [menuFor, setMenuFor] = useState<string | null>(null)
+  const menu = useRef<HTMLDivElement>(null)
+  const closeMenu = (refocus: boolean) => {
+    const id = menuFor
+    setMenuFor(null)
+    if (refocus && id) focusRow(id)
+  }
+  useLayoutEffect(() => {
+    if (menuFor) firstItem(menu.current)?.focus()
+  }, [menuFor])
+  useEffect(() => {
+    if (!menuFor) return
+    const outside = (e: PointerEvent) => {
+      if (!menu.current?.contains(e.target as Node)) setMenuFor(null)
+    }
+    document.addEventListener('pointerdown', outside)
+    return () => document.removeEventListener('pointerdown', outside)
+  }, [menuFor])
+  const menuNote = rows.find((r) => r.note.id === menuFor)?.note ?? null
+  const rowMenu = (): MenuItem[] => {
+    const n = menuNote!
+    if (n.trashedAt !== null)
+      return [
+        { label: 'Restore note', onSelect: () => model.restore(n.id) },
+        { label: 'Delete permanently…', danger: true, onSelect: () => act.deletePermanently(model, n.id, n.title) },
+      ]
+    return [
+      { label: n.pinned ? 'Unpin' : 'Pin', onSelect: () => model.togglePin(n.id) },
+      { label: 'Move to Trash', onSelect: () => model.trashWithUndo(n.id) },
+    ]
+  }
+
   const onKey = (e: KeyboardEvent, row: Row, index: number) => {
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    if ((e.key === 'F10' && e.shiftKey) || e.key === 'ContextMenu') {
+      setMenuFor(row.note.id)
+    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       const next = rows[index + (e.key === 'ArrowDown' ? 1 : -1)]
       if (next) choose(next.note.id, true)
     } else if (e.key === 'Enter') {
@@ -99,8 +136,12 @@ export function NoteList({ model, onOpen, onEnter }: { model: AppModel; onOpen: 
                 aria-selected={selected}
                 aria-label={rowLabel(n, nb, now)}
                 tabIndex={selected || (i === 0 && !rows.some((r) => r.note.id === openId)) ? 0 : -1}
-                class="row"
+                class={n.id === menuFor ? 'row row-menu-open' : 'row'}
                 onClick={() => choose(n.id, false)}
+                onContextMenu={(e) => {
+                  e.preventDefault()
+                  setMenuFor(n.id)
+                }}
                 onKeyDown={(e) => onKey(e, row, i)}
               >
                 <span class="row-tile" data-tint={tint(n.id)} data-letter={letter(n.title)} aria-hidden="true" />
@@ -113,6 +154,15 @@ export function NoteList({ model, onOpen, onEnter }: { model: AppModel; onOpen: 
             )
           })}
         </div>
+      )}
+      {menuNote && (
+        <MenuList
+          menuRef={menu}
+          label={`More for ${menuNote.title.trim() === '' ? 'Untitled' : menuNote.title}`}
+          items={rowMenu()}
+          onClose={closeMenu}
+          class="menu row-menu"
+        />
       )}
     </div>
   )

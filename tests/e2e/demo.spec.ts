@@ -8,6 +8,9 @@ test('the demo line says notes aren’t saved and links to the download page', a
   await page.goto('/')
   await expect(page.getByText("This is a demo. Notes here aren't saved.")).toBeVisible()
   await expect(page.getByRole('link', { name: 'Get FeatherMark' })).toHaveAttribute('href', 'https://feathermark.com/download')
+  // a new tab: following it in this one would end the demo and lose its notes
+  await expect(page.getByRole('link', { name: 'Get FeatherMark' })).toHaveAttribute('target', '_blank')
+  await expect(page.getByRole('link', { name: 'Get FeatherMark' })).toHaveAttribute('rel', 'noopener noreferrer')
   await expect(page.getByRole('button', { name: 'Log in' })).toHaveCount(0)
 })
 

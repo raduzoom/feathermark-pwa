@@ -1,6 +1,6 @@
 // A menu button and its popup (WAI-ARIA menu button pattern): arrows move, Enter or Space picks, Escape closes and
 // returns focus. Items are built when the menu opens, and again on every render while open.
-import type { ComponentChildren } from 'preact'
+import type { ComponentChildren, RefObject } from 'preact'
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 
 export type MenuItem =
@@ -22,7 +22,7 @@ export function MenuButton(props: { label: ComponentChildren; ariaLabel: string;
   }
 
   useLayoutEffect(() => {
-    if (open) (menu.current?.querySelector('[role^="menuitem"]') as HTMLElement | null)?.focus()
+    if (open) firstItem(menu.current)?.focus()
   }, [open, sub])
 
   useEffect(() => {
@@ -35,27 +35,6 @@ export function MenuButton(props: { label: ComponentChildren; ariaLabel: string;
   }, [open])
 
   const items = open ? (sub ?? props.items)() : []
-  const pick = (item: Exclude<MenuItem, 'separator'>) => {
-    if (item.submenu) return setSub(() => item.submenu!)
-    const keepOpen = item.kind === 'checkbox'
-    if (!keepOpen) close(true)
-    item.onSelect?.()
-  }
-
-  const onKey = (e: KeyboardEvent) => {
-    const all = [...(menu.current?.querySelectorAll<HTMLElement>('[role^="menuitem"]') ?? [])]
-    const i = all.indexOf(document.activeElement as HTMLElement)
-    if (e.key === 'ArrowDown') all[(i + 1) % all.length]?.focus()
-    else if (e.key === 'ArrowUp') all[(i - 1 + all.length) % all.length]?.focus()
-    else if (e.key === 'Home') all[0]?.focus()
-    else if (e.key === 'End') all[all.length - 1]?.focus()
-    else if (e.key === 'Escape') close(true)
-    else if (e.key === 'Tab') close(false)
-    else return
-    if (e.key !== 'Tab') e.preventDefault()
-    e.stopPropagation()
-  }
-
   return (
     <span class="menu-anchor">
       <button
@@ -71,34 +50,75 @@ export function MenuButton(props: { label: ComponentChildren; ariaLabel: string;
         {props.label}
       </button>
       {open && (
-        <div ref={menu} role="menu" aria-label={props.ariaLabel} class="menu" onKeyDown={onKey}>
-          {items.map((item, i) =>
-            item === 'separator' ? (
-              <div key={`s${i}`} role="separator" class="menu-separator" />
-            ) : (
-              <div
-                key={item.label + i}
-                role={ROLE[item.kind ?? 'item']}
-                aria-checked={item.kind && item.kind !== 'item' ? Boolean(item.checked) : undefined}
-                tabIndex={-1}
-                class="menu-item"
-                data-depth={item.depth ?? 0}
-                data-danger={item.danger ? 'true' : undefined}
-                onClick={() => pick(item)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    pick(item)
-                  }
-                }}
-              >
-                {item.kind === 'checkbox' || item.kind === 'radio' ? <span class="menu-check" aria-hidden="true">{item.checked ? '✓' : ''}</span> : null}
-                {item.label}
-              </div>
-            ),
-          )}
-        </div>
+        <MenuList
+          menuRef={menu}
+          label={props.ariaLabel}
+          items={items}
+          onClose={close}
+          onSubmenu={(f) => setSub(() => f)}
+        />
       )}
     </span>
+  )
+}
+
+export const firstItem = (el: HTMLElement | null) => el?.querySelector<HTMLElement>('[role^="menuitem"]') ?? null
+
+/** A menu's popup (role menu): arrows move, Enter or Space picks, Escape closes (refocus true), Tab leaves. Used by
+ *  MenuButton and by context menus. Focus its first item when it opens. */
+export function MenuList({ menuRef, label, items, onClose, onSubmenu, class: cls }: {
+  menuRef: RefObject<HTMLDivElement | null>
+  label: string
+  items: MenuItem[]
+  onClose: (refocus: boolean) => void
+  onSubmenu?: (items: () => MenuItem[]) => void
+  class?: string
+}) {
+  const pick = (item: Exclude<MenuItem, 'separator'>) => {
+    if (item.submenu) return onSubmenu?.(item.submenu)
+    if (item.kind !== 'checkbox') onClose(true)
+    item.onSelect?.()
+  }
+  const onKey = (e: KeyboardEvent) => {
+    const all = [...((e.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('[role^="menuitem"]') ?? [])]
+    const i = all.indexOf(document.activeElement as HTMLElement)
+    if (e.key === 'ArrowDown') all[(i + 1) % all.length]?.focus()
+    else if (e.key === 'ArrowUp') all[(i - 1 + all.length) % all.length]?.focus()
+    else if (e.key === 'Home') all[0]?.focus()
+    else if (e.key === 'End') all[all.length - 1]?.focus()
+    else if (e.key === 'Escape') onClose(true)
+    else if (e.key === 'Tab') onClose(false)
+    else return
+    if (e.key !== 'Tab') e.preventDefault()
+    e.stopPropagation()
+  }
+  return (
+    <div ref={menuRef} role="menu" aria-label={label} class={cls ?? 'menu'} onKeyDown={onKey}>
+      {items.map((item, i) =>
+        item === 'separator' ? (
+          <div key={`s${i}`} role="separator" class="menu-separator" />
+        ) : (
+          <div
+            key={item.label + i}
+            role={ROLE[item.kind ?? 'item']}
+            aria-checked={item.kind && item.kind !== 'item' ? Boolean(item.checked) : undefined}
+            tabIndex={-1}
+            class="menu-item"
+            data-depth={item.depth ?? 0}
+            data-danger={item.danger ? 'true' : undefined}
+            onClick={() => pick(item)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault()
+                pick(item)
+              }
+            }}
+          >
+            {item.kind === 'checkbox' || item.kind === 'radio' ? <span class="menu-check" aria-hidden="true">{item.checked ? '✓' : ''}</span> : null}
+            {item.label}
+          </div>
+        ),
+      )}
+    </div>
   )
 }

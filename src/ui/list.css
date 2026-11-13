@@ -1,5 +1,6 @@
 /* Note list (board web-main: serif heading, rows with a 48 px tile, 16 px radius, 3 px accent bar). */
 .list-body {
+  position: relative; /* the row menu's fallback position */
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -126,4 +127,26 @@
   font-family: var(--font-serif);
   font-size: var(--type-md-h3-size);
   color: var(--c-text-primary);
+}
+
+/* The row menu sits under its row (CSS anchor positioning); without it, at the top of the list. */
+.row-menu-open {
+  anchor-name: --row-menu;
+}
+.menu.row-menu {
+  position: fixed;
+  right: auto;
+  position-anchor: --row-menu;
+  top: anchor(bottom);
+  left: anchor(left);
+  margin-left: var(--space-48);
+}
+@supports not (anchor-name: --x) {
+  .menu.row-menu {
+    position: absolute;
+    top: var(--space-64);
+    right: var(--space-16);
+    left: auto;
+    margin-left: 0;
+  }
 }
