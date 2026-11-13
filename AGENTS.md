@@ -25,7 +25,8 @@ This repo is the web app: a TypeScript app served as static files from `app.feat
 | Command | What |
 |---|---|
 | `pnpm dev` | Dev server on 8430. Not under the security policy (Vite's dev client needs inline code); never test against it. |
-| `pnpm build` then `pnpm preview` | The production build on 8431, with the same headers Cloudflare Pages sends. |
+| `pnpm build` then `pnpm preview` | The production build on 8431, with the same headers Cloudflare Pages sends. `pnpm demo` does both. |
+| `pnpm cloud:up`, `pnpm cloud:app`, `pnpm cloud:code`, `pnpm cloud:down` | Try accounts by hand: start the local Feather Cloud (`../server`, see "Accounts build and local Feather Cloud"); build and serve the accounts build on 8431 (so not beside `pnpm demo`); print the last verification code the server logged; stop the server, keeping its volumes. |
 | `pnpm test` | Unit tests (Vitest, Node), `tests/unit/`. |
 | `pnpm typecheck` | TypeScript over everything, tests and the test page included. `pnpm build` checks only what it ships (`tsconfig.build.json`), so it builds without `../universal`. |
 | `pnpm e2e` | Browser tests (Playwright), `tests/e2e/`, against a fresh build on 8431. `FEATHER_ENGINES=chromium,webkit` picks engines. |
