@@ -3,6 +3,7 @@
 import type { Attachment } from './attachments.ts'
 import { percentEncodePathComponent, rewriteAttachmentLinks, splitExtension, uniqueName } from './links.ts'
 import { nameOrder } from './names.ts'
+import type { Library } from './library.ts'
 import type { Note } from './types.ts'
 
 const INDICATORS = new Set(['-', '?', ':', ',', '[', ']', '{', '}', '#', '&', '*', '!', '|', '>', "'", '"', '%', '@', '`'])
@@ -102,4 +103,44 @@ export function noteDownload(note: Note, tagNames: string[], attachmentsOf: (bod
   }
   const text = noteMarkdown({ ...note, body: rewriteAttachmentLinks(note.body, paths) }, tagNames)
   return { kind: 'zip', fileName: base + '.zip', entries: [{ path: fileName, bytes: new TextEncoder().encode(text) }, ...entries] }
+}
+
+const ROOT = 'FeatherMark Export'
+const ATTACHMENTS = '_attachments'
+
+/** "Download all notes (.zip)": the whole library as data-model.md "Export to a Markdown folder" lays it out, as zip entries
+ *  under `FeatherMark Export/` (Library+Export.swift): one folder per notebook (empty ones too), its sub-notebooks
+ *  first, then its notes in the order they were made, each `<title>.md` with ` (2)`, … for a taken name, and its
+ *  attachments in `_attachments/<note>/`. Trashed notes are left out. Folders are entries of their own (`…/`). */
+export function libraryZip(library: Library, contentOf: (id: string) => Uint8Array | undefined = () => undefined): Array<{ path: string; bytes: Uint8Array }> {
+  const entries: Array<{ path: string; bytes: Uint8Array }> = []
+  const encoder = new TextEncoder()
+  const notebooks = library.notebooks()
+  const tagNames = new Map(library.tags().map((t) => [t.id, t.name]))
+  const live = [...library.notes({ kind: 'all' })].map((s) => library.note(s.id)!).sort((a, b) => a.created - b.created || (a.id < b.id ? -1 : 1))
+  const folder = (dir: string, notebookId: string | null) => {
+    entries.push({ path: `${dir}/`, bytes: new Uint8Array(0) })
+    const taken = new Set<string>([ATTACHMENTS])
+    for (const child of notebooks.filter((n) => n.parentId === notebookId)) {
+      folder(`${dir}/${uniqueName(sanitizeFileName(child.name), '', taken)}`, child.id)
+    }
+    for (const note of live.filter((n) => n.notebookId === notebookId)) {
+      const file = uniqueName(sanitizeFileName(note.title === '' ? 'Untitled' : note.title), '.md', taken)
+      const base = file.slice(0, -'.md'.length)
+      const attachmentNames = new Set<string>()
+      const paths = new Map<string, string>()
+      for (const a of library.attachmentsOf(note.body)) {
+        const [stem, ext] = splitExtension(sanitizeFileName(a.filename))
+        const name = uniqueName(stem, ext, attachmentNames)
+        paths.set(a.id, [ATTACHMENTS, base, name].map(percentEncodePathComponent).join('/'))
+        entries.push({ path: `${dir}/${ATTACHMENTS}/${base}/${name}`, bytes: contentOf(a.id) ?? a.bytes })
+      }
+      const tags = note.tagIds.flatMap((t) => tagNames.get(t) ?? [])
+      const body = paths.size ? rewriteAttachmentLinks(note.body, paths) : note.body
+      // the note before its attachments, as a reader expects
+      entries.splice(entries.length - paths.size, 0, { path: `${dir}/${file}`, bytes: encoder.encode(noteMarkdown({ ...note, body }, tags)) })
+    }
+  }
+  folder(ROOT, null)
+  return entries
 }

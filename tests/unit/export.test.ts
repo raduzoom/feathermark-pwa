@@ -1,5 +1,7 @@
-import { expect, test } from 'vitest'
-import { frontMatter, noteFileName, noteMarkdown, sanitizeFileName } from '../../src/core/library/export.ts'
+import { describe, expect, test } from 'vitest'
+import { frontMatter, libraryZip, noteFileName, noteMarkdown, sanitizeFileName } from '../../src/core/library/export.ts'
+import { Library } from '../../src/core/library/library.ts'
+import { fakeClock } from './support/clock.ts'
 import type { Note } from '../../src/core/library/types.ts'
 
 const note = (o: Partial<Note> = {}): Note => ({
@@ -59,4 +61,69 @@ test('file names replace forbidden characters, trim, avoid reserved names and cu
   expect(new TextEncoder().encode(long).length).toBe(200)
   expect(noteFileName(note({ title: '  ' }))).toBe('Untitled.md')
   expect(noteFileName(note({ title: 'Lisbon: spring' }))).toBe('Lisbon- spring.md')
+})
+
+describe('libraryZip: the whole library as a Markdown folder (data-model.md "Export")', () => {
+  const clock = fakeClock()
+  const bytes = (s: string) => new TextEncoder().encode(s)
+  const text = (b: Uint8Array) => new TextDecoder().decode(b)
+
+  function example() {
+    const lib = new Library(clock)
+    const home = lib.createNotebook('Home', null)
+    const recipes = lib.createNotebook('Recipes', home.id)
+    lib.createNotebook('Work', null)
+    const shopping = lib.createTag('shopping')
+    lib.createNote({ title: 'Inbox', body: 'root' })
+    clock.advance(1)
+    lib.createNote({ title: 'Pasta', body: 'one', notebookId: recipes.id })
+    clock.advance(1)
+    lib.createNote({ title: 'Pasta', body: 'two', notebookId: recipes.id })
+    const jpg = lib.addAttachment({ bytes: bytes('JPG'), filename: 'receipt.jpg', mime: 'image/jpeg', sha256: 'a' })
+    const pdf = lib.addAttachment({ bytes: bytes('PDF'), filename: 'list.pdf', mime: 'application/pdf', sha256: 'b' })
+    clock.advance(1)
+    lib.createNote({
+      title: 'Groceries',
+      body: `- [ ] Milk\n![](feather://attachment/${jpg.id})\n[list](feather://attachment/${pdf.id})\n\`feather://attachment/${pdf.id}\`\n`,
+      notebookId: home.id,
+      tagIds: [shopping.id],
+    })
+    const gone = lib.createNote({ title: 'Old', body: 'trashed' })
+    lib.trashNote(gone.id)
+    return lib
+  }
+
+  test('notebook folders, numbered names, _attachments, empty folders; the Trash left out', () => {
+    const entries = libraryZip(example())
+    expect(entries.map((e) => e.path)).toEqual([
+      'FeatherMark Export/',
+      'FeatherMark Export/Home/',
+      'FeatherMark Export/Home/Recipes/',
+      'FeatherMark Export/Home/Recipes/Pasta.md',
+      'FeatherMark Export/Home/Recipes/Pasta (2).md',
+      'FeatherMark Export/Home/Groceries.md',
+      'FeatherMark Export/Home/_attachments/Groceries/receipt.jpg',
+      'FeatherMark Export/Home/_attachments/Groceries/list.pdf',
+      'FeatherMark Export/Work/',
+      'FeatherMark Export/Inbox.md',
+    ])
+    const byPath = new Map(entries.map((e) => [e.path, e.bytes]))
+    expect(text(byPath.get('FeatherMark Export/Home/Recipes/Pasta.md')!)).toMatch(/\n\none$/)
+    expect(text(byPath.get('FeatherMark Export/Home/Recipes/Pasta (2).md')!)).toMatch(/\n\ntwo$/)
+    const groceries = text(byPath.get('FeatherMark Export/Home/Groceries.md')!)
+    expect(groceries).toContain('tags: [shopping]')
+    expect(groceries).toContain('![](_attachments/Groceries/receipt.jpg)\n[list](_attachments/Groceries/list.pdf)\n`feather://attachment/')
+    expect(text(byPath.get('FeatherMark Export/Home/_attachments/Groceries/receipt.jpg')!)).toBe('JPG')
+    expect([...byPath.keys()].some((p) => p.includes('Old'))).toBe(false)
+  })
+
+  test('a notebook folder named like _attachments, or like another, gets a number', () => {
+    const lib = new Library(clock)
+    lib.createNotebook('_attachments', null)
+    lib.createNotebook('a/b', null)
+    lib.createNotebook('a-b', null)
+    const paths = libraryZip(lib).map((e) => e.path)
+    expect(paths[0]).toBe('FeatherMark Export/')
+    expect([...paths].sort()).toEqual(['FeatherMark Export/', 'FeatherMark Export/_attachments (2)/', 'FeatherMark Export/a-b (2)/', 'FeatherMark Export/a-b/'])
+  })
 })

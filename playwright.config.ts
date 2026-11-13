@@ -13,8 +13,25 @@ const all = [
 // local server, the same leak fixture.
 const live = process.env.FEATHER_LIVE_URL
 
+// FEATHER_CLOUD=1 runs the `cloud` project instead: a build with VITE_FEATHER_CLOUD_URL set (accounts on), into
+// dist-cloud/, served on 8431 with its policy, running tests/cloud/ against the local Feather Cloud on 8420. It
+// shares 8431 with the demo build, so the two never run together (`pnpm e2e:cloud`).
+const cloud = process.env.FEATHER_CLOUD === '1'
+
 export default defineConfig(
-  live
+  cloud
+    ? {
+        testDir: 'tests/cloud',
+        outputDir: 'test-results',
+        use: { baseURL: 'http://localhost:8431' },
+        projects: all.filter((p) => engines.includes(p.name)).map((p) => ({ ...p, name: `cloud-${p.name}` })),
+        webServer: {
+          command: 'export VITE_FEATHER_CLOUD_URL=http://localhost:8420 && pnpm exec vite build --outDir dist-cloud --emptyOutDir && pnpm exec vite preview --outDir dist-cloud --port 8431 --strictPort',
+          url: 'http://localhost:8431',
+          reuseExistingServer: false,
+        },
+      }
+    : live
     ? {
         testDir: 'tests/live',
         outputDir: 'test-results',

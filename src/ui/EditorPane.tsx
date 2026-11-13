@@ -76,7 +76,7 @@ export function EditorPane({ model, onBack }: { model: AppModel; onBack: () => v
             placeholder="Title"
             rows={1}
             value={title}
-            readOnly={trashed}
+            readOnly={trashed || model.readOnly.value}
             onInput={(e) => model.editTitle(e.currentTarget.value.replace(/\r?\n/g, ' '))}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
@@ -86,6 +86,11 @@ export function EditorPane({ model, onBack }: { model: AppModel; onBack: () => v
             }}
           />
           <p class="edited">{editedLine(note.modified, model.now())}</p>
+          {model.openNoteLoading.value && (
+            <p class="note-loading" role="status">
+              Loading this note…
+            </p>
+          )}
           <NoteEditor model={model} />
         </div>
       </div>
@@ -140,7 +145,8 @@ function Toolbar({ model, note }: { model: AppModel; note: Note }) {
       <button type="button" class="tool" aria-pressed={model.editorRaw.value} onClick={() => model.toggleRaw()}>
         Markdown
       </button>
-      <button type="button" class="tool" onClick={download}>
+      {/* a body that hasn't arrived would be saved as an empty file */}
+      <button type="button" class="tool" disabled={model.openNoteLoading.value} onClick={download}>
         Download .md
       </button>
       <button type="button" class="tool" onClick={() => model.trashWithUndo(note.id)}>

@@ -5,21 +5,31 @@ import { LibraryError, type NoteSummary } from '../core/library/types.ts'
 export type FormatOpts = { locale?: string; timeZone?: string }
 const DAY = 86_400_000
 
+// Intl.DateTimeFormat is slow to make (a list of 1,000 rows made about 14,000 of them per redraw); one is kept per
+// locale, time zone and set of options.
+const formatters = new Map<string, Intl.DateTimeFormat>()
+function formatter(locale: string | undefined, options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  const key = JSON.stringify([locale ?? null, options])
+  let f = formatters.get(key)
+  if (!f) formatters.set(key, (f = new Intl.DateTimeFormat(locale, options)))
+  return f
+}
+
 function dayKey(ms: number, o: FormatOpts): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: o.timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(ms)
+  return formatter('en-CA', { timeZone: o.timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(ms)
 }
 const sameDay = (a: number, b: number, o: FormatOpts) => dayKey(a, o) === dayKey(b, o)
 const yesterday = (ms: number, now: number, o: FormatOpts) => sameDay(ms, now - DAY, o)
 
 function time(ms: number, o: FormatOpts): string {
-  return new Intl.DateTimeFormat(o.locale, { timeZone: o.timeZone, hour: '2-digit', minute: '2-digit' }).format(ms)
+  return formatter(o.locale, { timeZone: o.timeZone, hour: '2-digit', minute: '2-digit' }).format(ms)
 }
 
 /** "7 Nov", or "2 Nov 2025" outside the current year. */
 function dayMonth(ms: number, now: number, o: FormatOpts): string {
-  const year = (t: number) => new Intl.DateTimeFormat('en-CA', { timeZone: o.timeZone, year: 'numeric' }).format(t)
+  const year = (t: number) => formatter('en-CA', { timeZone: o.timeZone, year: 'numeric' }).format(t)
   const same = year(ms) === year(now)
-  return new Intl.DateTimeFormat(o.locale, { timeZone: o.timeZone, day: 'numeric', month: 'short', ...(same ? {} : { year: 'numeric' }) }).format(ms)
+  return formatter(o.locale, { timeZone: o.timeZone, day: 'numeric', month: 'short', ...(same ? {} : { year: 'numeric' }) }).format(ms)
 }
 
 export function listDate(ms: number, now: number, o: FormatOpts = {}): string {
@@ -105,4 +115,11 @@ export function errorMessage(e: unknown, tagName?: string): string {
     }
   }
   return `Something went wrong: ${e instanceof Error ? e.message : String(e)}`
+}
+
+/** The unlock screen's title (ui-copy.md "Web app" › "Accounts (Phase 20)"): thrown out by the server, the tab asks
+ *  to sign in again; another tab owns the kept library, it says so; otherwise it is simply locked. */
+export function lockedTitle(email: string, reason: 'idle' | 'manual' | 'signedOut' | 'otherTab' | 'kept'): string {
+  if (reason === 'signedOut') return `Sign in again as ${email}`
+  return reason === 'otherTab' ? 'FeatherMark is open in another tab.' : 'FeatherMark is locked'
 }

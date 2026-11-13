@@ -5,7 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-flag() { for d in node_modules dist test-results playwright-report; do [ -e "$d" ] && xattr -w com.dropbox.ignored 1 "$d" 2>/dev/null || true; done; }
+flag() { for d in node_modules dist dist-cloud test-results playwright-report; do [ -e "$d" ] && xattr -w com.dropbox.ignored 1 "$d" 2>/dev/null || true; done; }
 trap flag EXIT
 
 if [ -z "${FEATHER_ENGINES:-}" ]; then
@@ -30,5 +30,16 @@ step bundle-size;  node scripts/bundle-size.ts --check
 step "e2e ($FEATHER_ENGINES)"; pnpm e2e --grep-invert @speed
 # timing tests alone, one worker: other workers running beside them skew the numbers
 step "speed ($FEATHER_ENGINES)"; pnpm e2e --grep @speed --workers=1
+
+# the accounts build against a local Feather Cloud on 8420 (AGENTS.md, "Local Feather Cloud")
+if curl -sS -o /dev/null --max-time 3 http://localhost:8420/ 2>/dev/null; then
+  step "cloud ($FEATHER_ENGINES)"; pnpm e2e:cloud --grep-invert @speed
+  # the kept copy at 1,000 notes, alone on one worker, as the editor's timing tests
+  step "cloud speed ($FEATHER_ENGINES)"; pnpm e2e:cloud --grep @speed --workers=1
+  # the accounts build (dist-cloud/, made by e2e:cloud) holds the same first-load promise as the demo
+  step "bundle-size (accounts build)"; node scripts/bundle-size.ts --check --dir dist-cloud
+else
+  step cloud; echo "skipped: no local server"
+fi
 
 echo "all tests: OK"

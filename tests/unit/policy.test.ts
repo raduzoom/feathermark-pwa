@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { contentSecurityPolicy, headersFile, securityHeaders } from '../../scripts/policy.ts'
+import { cloudOrigin, contentSecurityPolicy, headersFile, securityHeaders } from '../../scripts/policy.ts'
 
 const POLICY = "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' blob:; font-src 'self'; connect-src 'self'; worker-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
 
@@ -16,6 +16,26 @@ test.each(['http://zoomitthemes.go.ro', 'https://zoomitthemes.go.ro/v1', 'zoomit
   'refuses %s', (origin) => {
     expect(() => contentSecurityPolicy({ cloudOrigin: origin })).toThrow('cloudOrigin must be an https origin')
   })
+
+test('http://localhost:8420 is allowed, other http origins are not', () => {
+  expect(contentSecurityPolicy({ cloudOrigin: 'http://localhost:8420' }))
+    .toBe(POLICY.replace("connect-src 'self'", "connect-src 'self' http://localhost:8420"))
+  expect(contentSecurityPolicy({ cloudOrigin: 'http://127.0.0.1:8420' })).toContain('http://127.0.0.1:8420')
+  for (const o of ['http://example.com', 'http://localhost.evil.com', 'http://192.168.1.5:8420', 'http://localhost:8420/x'])
+    expect(() => contentSecurityPolicy({ cloudOrigin: o })).toThrow('cloudOrigin must be')
+})
+
+test('cloudOrigin() reads VITE_FEATHER_CLOUD_URL; unset or empty means no accounts', () => {
+  expect(cloudOrigin({})).toBeNull()
+  expect(cloudOrigin({ VITE_FEATHER_CLOUD_URL: '' })).toBeNull()
+  expect(cloudOrigin({ VITE_FEATHER_CLOUD_URL: 'https://zoomitthemes.go.ro' })).toBe('https://zoomitthemes.go.ro')
+  expect(cloudOrigin({ VITE_FEATHER_CLOUD_URL: 'http://localhost:8420' })).toBe('http://localhost:8420')
+  expect(() => cloudOrigin({ VITE_FEATHER_CLOUD_URL: 'http://example.com' })).toThrow('cloudOrigin must be')
+})
+
+test('the headers file carries the cloud origin when given', () => {
+  expect(headersFile({ cloudOrigin: 'http://localhost:8420' })).toContain("connect-src 'self' http://localhost:8420;")
+})
 
 test('the headers file is the same headers, in Pages form', () => {
   const lines = headersFile().trimEnd().split('\n')

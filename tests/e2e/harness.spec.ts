@@ -33,3 +33,38 @@ test('the storage report sees what a page writes', async ({ page }) => {
   expect((await storageReport(page)).localStorage).toBe(1)
   await page.evaluate(() => localStorage.clear())
 })
+
+test('a second context from leaks.newContext() is watched too: violations, foreign requests and storage', async ({ leaks }) => {
+  const other = await leaks.newContext()
+  const page = await other.newPage()
+  await page.goto('/')
+  // a policy violation, a request to another host, and something stored, all in the second context only
+  await page.evaluate(() => document.body.setAttribute('style', 'outline: 3px solid red'))
+  await page.evaluate(() => fetch('https://example.invalid/').catch(() => undefined))
+  await page.evaluate(() => localStorage.setItem('left', 'behind'))
+  await expect.poll(async () => (await leaks.problems()).join('\n')).toMatch(/style-src/)
+  const problems = (await leaks.problems()).join('\n')
+  expect(problems).toMatch(/connect-src|request to another origin: https:\/\/example\.invalid/)
+  expect(problems).toMatch(/localStorage: 1 item/)
+  leaks.forgive()
+})
+
+test('leaks.allowKeptVault() lets the "feathermark" database through, and no other', async ({ page, leaks }) => {
+  await page.goto('/')
+  const make = (name: string) =>
+    page.evaluate(
+      (n) =>
+        new Promise<void>((ok) => {
+          const r = indexedDB.open(n)
+          r.onsuccess = () => (r.result.close(), ok())
+        }),
+      name,
+    )
+  await make('feathermark')
+  expect((await leaks.problems()).join('\n')).toMatch(/IndexedDB: feathermark/)
+  leaks.allowKeptVault()
+  expect(await leaks.problems()).toEqual([])
+  await make('something-else')
+  expect((await leaks.problems()).join('\n')).toMatch(/IndexedDB: something-else$/m)
+  leaks.forgive()
+})

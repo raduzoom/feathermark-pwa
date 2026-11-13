@@ -18,6 +18,13 @@ export type Leaks = {
   expectViolation(pattern: RegExp): void
   /** A request to another origin matching `pattern` may happen (engines differ on reporting blocked ones). */
   allowForeignRequest(pattern: RegExp): void
+  /** Requests to this Feather Cloud origin (and only it) may happen. */
+  allowCloud(origin: string): void
+  /** "Keep my notes on this browser": the IndexedDB database "feathermark" may be left; nothing else may. */
+  allowKeptVault(): void
+  /** Another browser context (a second device), watched like the test's own: its violations, foreign requests and
+   *  storage fail the test. The fixture checks and closes it after the test; don't close it yourself. */
+  newContext(): Promise<BrowserContext>
   /** Everything teardown would fail the test on, right now. */
   problems(): Promise<string[]>
   /** For the harness's own tests only: let deliberate leaks through teardown. */
@@ -50,7 +57,7 @@ function watchWorker(mark: string) {
   self.addEventListener('securitypolicyviolation', (e) => console.log(`${mark}${e.violatedDirective} ${e.blockedURI}`))
 }
 
-async function contextProblems(context: BrowserContext, origin: string, leaks: Leaks, expected: RegExp[], allowed: RegExp[]) {
+async function contextProblems(context: BrowserContext, origin: string, leaks: Leaks, expected: RegExp[], allowed: RegExp[], databases: string[]) {
   const problems: string[] = []
 
   // Events name the directive, so they are matched exactly. Console text often doesn't, so it only fails a
@@ -62,7 +69,14 @@ async function contextProblems(context: BrowserContext, origin: string, leaks: L
     if (!seen) problems.push(`expected a violation matching ${p}`)
   }
   for (const u of leaks.foreignRequests) if (!allowed.some((p) => p.test(u))) problems.push(`request to another origin: ${u}`)
+  problems.push(...(await storageProblems(context, origin, databases)))
+  return problems
+}
 
+/** What a context left stored: cookies, localStorage, IndexedDB and caches on the app's origin, and sessionStorage
+ *  in every page still open on it. */
+async function storageProblems(context: BrowserContext, origin: string, databases: string[] = []) {
+  const problems: string[] = []
   // Storage outlives pages, so check it from a fresh page on the app's origin, plus sessionStorage (one per
   // tab) in every page still open on it.
   const cookies = await context.cookies()
@@ -72,7 +86,8 @@ async function contextProblems(context: BrowserContext, origin: string, leaks: L
     await fresh.goto(origin + '/')
     const s = await storageReport(fresh)
     if (s.localStorage) problems.push(`localStorage: ${s.localStorage} item(s)`)
-    if (s.indexedDB.length) problems.push(`IndexedDB: ${s.indexedDB.join(', ')}`)
+    const idb = s.indexedDB.filter((n) => !databases.includes(n))
+    if (idb.length) problems.push(`IndexedDB: ${idb.join(', ')}`)
     if (s.caches.length) problems.push(`caches: ${s.caches.join(', ')}`)
   } finally {
     await fresh.close()
@@ -85,12 +100,37 @@ async function contextProblems(context: BrowserContext, origin: string, leaks: L
   return problems
 }
 
+/** Watches a context: policy violations from its pages and workers, and its requests. */
+async function watch(context: BrowserContext, origin: string, leaks: Leaks) {
+  await context.exposeBinding('__featherViolation', (_source, text: string) => void leaks.violations.push(text))
+  await context.addInitScript(() => {
+    const report = (window as unknown as { __featherViolation: (t: string) => void }).__featherViolation
+    document.addEventListener('securitypolicyviolation', (e) => void report(`${e.violatedDirective} ${e.blockedURI}`))
+  })
+  const watchPage = (page: Page) =>
+    page.on('worker', (worker) => void worker.evaluate(watchWorker, WORKER_MARK).catch(() => {}))
+  context.pages().forEach(watchPage)
+  context.on('page', watchPage)
+  context.on('console', (m) => {
+    const text = m.text()
+    if (text.startsWith(WORKER_MARK)) leaks.violations.push(text.slice(WORKER_MARK.length))
+    else if (CSP_CONSOLE.test(text)) leaks.consoleViolations.push(text)
+  })
+  context.on('request', (r) => {
+    const url = r.url()
+    if (/^(data|blob|about):/.test(url)) return
+    if (new URL(url).origin !== origin) leaks.foreignRequests.push(url)
+  })
+}
+
 export const test = base.extend<{ leaks: Leaks }>({
   leaks: [
-    async ({ context, baseURL }, use) => {
+    async ({ context, browser, baseURL }, use) => {
       const origin = new URL(baseURL!).origin
       const expected: RegExp[] = []
       const allowed: RegExp[] = []
+      const others: BrowserContext[] = []
+      const databases: string[] = []
       let forgiven = false
       const leaks: Leaks = {
         violations: [],
@@ -98,34 +138,35 @@ export const test = base.extend<{ leaks: Leaks }>({
         foreignRequests: [],
         expectViolation: (p) => void expected.push(p),
         allowForeignRequest: (p) => void allowed.push(p),
-        problems: () => contextProblems(context, origin, leaks, expected, allowed),
+        allowKeptVault: () => void databases.push('feathermark'),
+        allowCloud: (o) => void allowed.push(new RegExp(`^${o.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(/|$)`)),
+        async newContext() {
+          const c = await browser.newContext({ baseURL })
+          others.push(c)
+          await watch(c, origin, leaks)
+          return c
+        },
+        // violations and requests are shared; storage is checked in every context
+        problems: async () => {
+          const all = await contextProblems(context, origin, leaks, expected, allowed, databases)
+          for (const c of others) {
+            for (const p of await storageProblems(c, origin, databases)) all.push(`second context: ${p}`)
+          }
+          return all
+        },
         forgive: () => void (forgiven = true),
       }
 
-      await context.exposeBinding('__featherViolation', (_source, text: string) => void leaks.violations.push(text))
-      await context.addInitScript(() => {
-        const report = (window as unknown as { __featherViolation: (t: string) => void }).__featherViolation
-        document.addEventListener('securitypolicyviolation', (e) => void report(`${e.violatedDirective} ${e.blockedURI}`))
-      })
-      const watchPage = (page: Page) =>
-        page.on('worker', (worker) => void worker.evaluate(watchWorker, WORKER_MARK).catch(() => {}))
-      context.pages().forEach(watchPage)
-      context.on('page', watchPage)
-      context.on('console', (m) => {
-        const text = m.text()
-        if (text.startsWith(WORKER_MARK)) leaks.violations.push(text.slice(WORKER_MARK.length))
-        else if (CSP_CONSOLE.test(text)) leaks.consoleViolations.push(text)
-      })
-      context.on('request', (r) => {
-        const url = r.url()
-        if (/^(data|blob|about):/.test(url)) return
-        if (new URL(url).origin !== origin) leaks.foreignRequests.push(url)
-      })
+      await watch(context, origin, leaks)
 
       await use(leaks)
 
-      if (forgiven) return
-      expect(await leaks.problems(), 'leaks found after the test').toEqual([])
+      try {
+        if (forgiven) return
+        expect(await leaks.problems(), 'leaks found after the test').toEqual([])
+      } finally {
+        for (const c of others) await c.close().catch(() => undefined)
+      }
     },
     { auto: true },
   ],

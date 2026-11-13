@@ -1,4 +1,4 @@
-import { beforeEach, expect, test } from 'vitest'
+import { beforeEach, expect, test, vi } from 'vitest'
 import { Library } from '../../src/core/library/library.ts'
 import { createAppModel, type AppModel } from '../../src/model/app-model.ts'
 import { DAY, fakeClock } from './support/clock.ts'
@@ -272,4 +272,43 @@ test('Markdown switches the editor between live preview and the raw text, for ev
   expect(m.editorRaw.value).toBe(true)
   m.toggleRaw()
   expect(m.editorRaw.value).toBe(false)
+})
+
+test('a library can be swapped: the open note, its unsaved typing, search, Undo and every object URL go with the old one', () => {
+  const revoked: string[] = []
+  const revoke = vi.spyOn(URL, 'revokeObjectURL').mockImplementation((u) => void revoked.push(u))
+  try {
+    const a = lib.addAttachment({ bytes: new Uint8Array([1, 2]), filename: 'oak.png', mime: 'image/png', sha256: 'aa' })
+    const secret = lib.createNote({ title: 'Secret plan', body: `the treasure is under the oak ![m](feather://attachment/${a.id})` })
+    const other = lib.createNote({ title: 'Other' })
+    start()
+    m.selectNote(secret.id)
+    const url = m.attachmentUrl(`feather://attachment/${a.id}`)!.objectUrl
+    m.setSearch('treasure')
+    m.trashWithUndo(other.id)
+    m.editBody('typed but not saved yet')
+    const versionBefore = lib.version
+
+    const empty = new Library(clock)
+    m.setLibrary(empty)
+    expect(m.openNote.value).toBeNull()
+    expect(m.draft.value).toBeNull()
+    expect(m.rows.value).toEqual([])
+    expect(m.searchText.value).toBe('')
+    expect(m.undo.value).toBeNull()
+    expect(revoked).toEqual([url])
+    // the pending save never lands, in either library
+    timers.tick(1000)
+    expect(lib.version).toBe(versionBefore)
+    expect(empty.version).toBe(0)
+    // the old library no longer drives the model; the new one does
+    lib.createNote({ title: 'old library' })
+    expect(m.rows.value).toEqual([])
+    const n = empty.createNote({ title: 'new library' })
+    expect(m.rows.value.map((r) => r.note.id)).toEqual([n.id])
+    m.setLibrary(lib)
+    expect(m.openNote.value?.id).toBe(m.rows.value[0]!.note.id)
+  } finally {
+    revoke.mockRestore()
+  }
 })

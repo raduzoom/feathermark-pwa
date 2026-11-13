@@ -3,10 +3,26 @@
 
 export type PolicyOptions = { cloudOrigin?: string }
 
+const HTTPS_ORIGIN = /^https:\/\/[a-z0-9.-]+(:\d+)?$/i
+const LOCAL_HTTP_ORIGIN = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i
+
+function isCloudOrigin(origin: string): boolean {
+  return HTTPS_ORIGIN.test(origin) || LOCAL_HTTP_ORIGIN.test(origin)
+}
+
+/** The Feather Cloud origin from VITE_FEATHER_CLOUD_URL, or null: no address means no accounts, the plain demo.
+ *  An origin only (no path); `https:`, or `http:` for localhost and 127.0.0.1. */
+export function cloudOrigin(env: Record<string, string | undefined> = process.env): string | null {
+  const value = env.VITE_FEATHER_CLOUD_URL
+  if (value === undefined || value === '') return null
+  if (!isCloudOrigin(value)) throw new Error('cloudOrigin must be an https origin (http only for localhost or 127.0.0.1)')
+  return value
+}
+
 export function contentSecurityPolicy(opts: PolicyOptions = {}): string {
   let connect = "'self'"
   if (opts.cloudOrigin !== undefined) {
-    if (!/^https:\/\/[a-z0-9.-]+(:\d+)?$/i.test(opts.cloudOrigin)) throw new Error('cloudOrigin must be an https origin')
+    if (!isCloudOrigin(opts.cloudOrigin)) throw new Error('cloudOrigin must be an https origin (http only for localhost or 127.0.0.1)')
     connect += ` ${opts.cloudOrigin}`
   }
   return [

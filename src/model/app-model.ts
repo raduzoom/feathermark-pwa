@@ -3,7 +3,7 @@
 import { batch, computed, signal, type ReadonlySignal } from '@preact/signals'
 import { systemClock, type Clock } from '../core/clock.ts'
 import { attachmentId, attachmentSnippet, MAX_ATTACHMENT_BYTES, sha256Hex, type Attachment } from '../core/library/attachments.ts'
-import type { Library } from '../core/library/library.ts'
+import type { Library, LibraryChange } from '../core/library/library.ts'
 import { LibraryError, type Counts, type Note, type Notebook, type NoteSummary, type Tag, type View } from '../core/library/types.ts'
 import { errorMessage, tooLargeMessage, unreadableMessage } from './format.ts'
 
@@ -26,6 +26,11 @@ export type AppModel = {
   notebooks: ReadonlySignal<Notebook[]>
   tags: ReadonlySignal<Tag[]>
   openNote: ReadonlySignal<Note | null>
+  /** The open note's body hasn't arrived from the server yet ("Loading this note…"): it can't be edited until it does,
+   *  and stays so if its download failed. */
+  openNoteLoading: ReadonlySignal<boolean>
+  /** Bumped when an attachment's content arrives, so an editor showing it draws it again. */
+  attachmentsVersion: ReadonlySignal<number>
   draft: ReadonlySignal<Draft | null>
   searchText: ReadonlySignal<string>
   searchNotebookId: ReadonlySignal<string | null>
@@ -36,6 +41,9 @@ export type AppModel = {
   titleWantsFocus: ReadonlySignal<boolean>
   /** "Markdown" pressed: the editor shows the raw text (the Mac's editor mode; it stays as notes change). */
   editorRaw: ReadonlySignal<boolean>
+  /** Another tab owns the kept library ("FeatherMark is now open in another tab."): nothing here may change it. */
+  readOnly: ReadonlySignal<boolean>
+  setReadOnly(on: boolean): void
   now: () => number
   select(v: View): void
   selectNote(id: string | null): void
@@ -73,8 +81,24 @@ export type AppModel = {
   /** The attachments a body references, for downloads. */
   attachmentsOf(body: string): Attachment[]
   clearError(): void
+  /** Shows a message in the error toast (a failure outside the library, such as a lock that couldn't seal). */
+  showError(message: string): void
+  /** Puts another library in place (locking, unlocking, signing in or out). The old one's open note, unsaved typing,
+   *  search, Undo and error go, and every attachment object URL is revoked. Unsaved typing is dropped: call flush()
+   *  first to keep it. */
+  setLibrary(library: Library, o?: LibraryOptions): void
+  /** Text typed in the editor that another device's version replaced before it could be saved (an IME composition
+   *  held the replacement back): kept as a conflict copy of the note, as the sync conflict rules would; the draft
+   *  typed over the other device's text is dropped, never saved over it. */
+  keepAsCopy(noteId: string, body: string): void
+  /** The library on screen (the demo's, when the session offers to carry its notes into an account). */
+  currentLibrary(): Library
   dispose(): void
 }
+
+/** `loadAttachment`: downloads an attachment's content the first time it is shown (BodyLoader.loadAttachment). */
+/** `conflictTitle`: the title of a conflict copy made here (`<title> (conflict, <device>, <d MMM HH:mm>)`). */
+export type LibraryOptions = { loadAttachment?: (id: string) => Promise<Uint8Array | null>; conflictTitle?: (title: string) => string }
 
 const defaultTimers: TimerFns = { set: (fn, ms) => setTimeout(fn, ms), clear: (h) => clearTimeout(h as ReturnType<typeof setTimeout>) }
 
@@ -87,12 +111,41 @@ export function createAppModel(
   const saveDelay = opts.saveDelayMs ?? 500
   const undoWindow = opts.undoWindowMs ?? 5000
 
-  const version = signal(library.version)
-  const unsubscribe = library.subscribe(() => (version.value = library.version))
+  // Bumped on every change of the library, and when another library takes its place.
+  const version = signal(0)
+  // Bumped when a body arrives that something on screen shows: the open note's, or any while searching. Any other
+  // body arriving redraws nothing (a library of 1,000 notes loading in the background would redraw the list each time).
+  const bodyVersion = signal(0)
+  const onChange = (c: LibraryChange) => {
+    if (c.kind === 'body') {
+      if (c.id === openId.peek() || searchText.peek().trim() !== '') bodyVersion.value++
+      return
+    }
+    version.value++
+  }
+  // typing not saved yet goes in as a local change before another device's version of that note lands, so the
+  // engine's conflict rules keep both; and the open note's body is downloaded with its metadata
+  const watch = (lib: Library) =>
+    lib.watchRemote({
+      beforeWrite: (id) => {
+        if (pending.peek()?.id === id) flush()
+      },
+      wantsBody: (id) => id === openId.peek(),
+    })
+  let unwatch = watch(library)
+  let unsubscribe = library.subscribe(onChange)
+  let loadAttachment: LibraryOptions['loadAttachment'] = undefined
+  let conflictTitle: LibraryOptions['conflictTitle'] = undefined
+  /** Attachments asked for (once per library), and the content of those that arrived but couldn't be stored. */
+  const asked = new Set<string>()
+  const fetched = new Map<string, Uint8Array>()
+  const attachmentsVersion = signal(0)
 
   const selection = signal<View>({ kind: 'all' })
   const openId = signal<string | null>(null)
-  const pending = signal<(Draft & { id: string }) | null>(null)
+  /** Typing not saved yet. `bodyEdited`: the body was typed into; a title-only edit never writes the body, so a body
+   *  that arrives from the server meanwhile isn't overwritten by the text the title was typed over. */
+  const pending = signal<(Draft & { id: string; bodyEdited: boolean }) | null>(null)
   const searchText = signal('')
   const searchNotebookId = signal<string | null>(null)
   const searchTagIds = signal<string[]>([])
@@ -100,8 +153,13 @@ export function createAppModel(
   const error = signal<string | null>(null)
   const titleWantsFocus = signal(false)
   const editorRaw = signal(false)
+  const readOnly = signal(false)
   // Object URLs for attachments, made on first use and kept while a note uses them.
   const objectUrls = new Map<string, string>()
+  const releaseAllUrls = () => {
+    for (const u of objectUrls.values()) URL.revokeObjectURL(u)
+    objectUrls.clear()
+  }
   const releaseUnusedUrls = () => {
     for (const [id, u] of objectUrls)
       if (!library.attachmentInUse(id)) {
@@ -120,6 +178,7 @@ export function createAppModel(
     version.value
     const view = selection.value
     if (searching.value) {
+      bodyVersion.value
       return library
         .search(searchText.value, { notebookId: searchNotebookId.value, tagIds: searchTagIds.value, inTrash: view.kind === 'trash' })
         .map((h) => ({ note: h.note, snippet: h.snippet, matches: h.matches }))
@@ -128,11 +187,19 @@ export function createAppModel(
   })
   const openNote = computed(() => {
     version.value
+    bodyVersion.value
     return openId.value ? (library.note(openId.value) ?? null) : null
+  })
+  const openNoteLoading = computed(() => {
+    version.value
+    bodyVersion.value
+    const id = openId.value
+    return id !== null && library.syncItem(id)?.bodyLoaded === false
   })
   const draft = computed<Draft | null>(() => {
     const p = pending.value
-    return p && p.id === openId.value ? { title: p.title, body: p.body } : null
+    if (!p || p.id !== openId.value) return null
+    return { title: p.title, body: p.bodyEdited ? p.body : (openNote.value?.body ?? p.body) }
   })
   const notebookName = (id: string | null) => (id ? (notebooks.value.find((n) => n.id === id)?.name ?? null) : null)
   const title = computed(() => {
@@ -185,7 +252,8 @@ export function createAppModel(
     const p = pending.value
     if (!p) return
     pending.value = null
-    if (library.note(p.id)) library.updateNote(p.id, { title: p.title, body: p.body })
+    if (readOnly.value) return
+    if (library.note(p.id)) library.updateNote(p.id, p.bodyEdited ? { title: p.title, body: p.body } : { title: p.title })
   }
 
   function flush(): void {
@@ -196,11 +264,14 @@ export function createAppModel(
 
   function edit(change: Partial<Draft>): void {
     const n = openNote.value
-    if (!n || n.trashedAt !== null) return
+    if (!n || n.trashedAt !== null || readOnly.value) return
+    // a body that hasn't arrived is a placeholder: never typed over (its title can still change)
+    if (change.body !== undefined && openNoteLoading.peek()) return
     const current = draft.value ?? { title: n.title, body: n.body }
     const next = { ...current, ...change }
     if (next.title === current.title && next.body === current.body) return
-    pending.value = { id: n.id, ...next }
+    const bodyEdited = (pending.peek()?.id === n.id && pending.peek()!.bodyEdited) || next.body !== current.body
+    pending.value = { id: n.id, ...next, bodyEdited }
     if (saveTimer !== null) timers.clear(saveTimer)
     saveTimer = timers.set(() => {
       saveTimer = null
@@ -226,6 +297,27 @@ export function createAppModel(
     }
   }
 
+  /** A change to the library: refused while another tab owns it. */
+  function write<T>(body: () => T, tagName?: string): T | null {
+    if (readOnly.value) return null
+    return change(body, tagName)
+  }
+
+  /** Downloads an attachment once per library; a failure isn't retried on every redraw (the next library tries again). */
+  function askFor(id: string): void {
+    if (!loadAttachment || asked.has(id)) return
+    asked.add(id)
+    const lib = library
+    loadAttachment(id).then(
+      (bytes) => {
+        if (library !== lib) return
+        if (bytes && lib.syncItem(id)?.bodyLoaded === false) fetched.set(id, bytes)
+        attachmentsVersion.value++
+      },
+      () => undefined,
+    )
+  }
+
   function clearSearch(): void {
     searchText.value = ''
     searchNotebookId.value = null
@@ -246,6 +338,8 @@ export function createAppModel(
     notebooks,
     tags,
     openNote,
+    openNoteLoading,
+    attachmentsVersion,
     draft,
     searchText,
     searchNotebookId,
@@ -255,6 +349,11 @@ export function createAppModel(
     error,
     titleWantsFocus,
     editorRaw,
+    readOnly,
+    setReadOnly(on) {
+      if (on) flush()
+      readOnly.value = on
+    },
     toggleRaw() {
       editorRaw.value = !editorRaw.value
     },
@@ -270,7 +369,7 @@ export function createAppModel(
       openId.value = id
     },
     newNote() {
-      const n = change(() => {
+      const n = write(() => {
         const v = selection.value
         if (v.kind === 'trash' || v.kind === 'pinned') selection.value = { kind: 'all' }
         clearSearch()
@@ -288,13 +387,13 @@ export function createAppModel(
     editBody: (b) => edit({ body: b }),
     flush,
     togglePin(id) {
-      change(() => library.setPinned(id, !library.note(id)?.pinned))
+      write(() => library.setPinned(id, !library.note(id)?.pinned))
     },
     move(id, notebookId) {
-      change(() => library.moveNote(id, notebookId))
+      write(() => library.moveNote(id, notebookId))
     },
     toggleTag(noteId, tagId) {
-      change(() => {
+      write(() => {
         const tags = library.note(noteId)?.tagIds ?? []
         library.setTags(noteId, tags.includes(tagId) ? tags.filter((t) => t !== tagId) : [...tags, tagId])
       })
@@ -302,7 +401,7 @@ export function createAppModel(
     trashWithUndo(id) {
       flush()
       const t = library.note(id)?.title ?? ''
-      const done = change(() => (library.trashNote(id), true))
+      const done = write(() => (library.trashNote(id), true))
       if (!done) return
       dismissUndo()
       const offer = { noteId: id, title: t }
@@ -316,22 +415,25 @@ export function createAppModel(
       const offer = undo.value
       if (!offer) return
       dismissUndo()
-      change(() => library.restoreNote(offer.noteId))
+      write(() => library.restoreNote(offer.noteId))
     },
     dismissUndo,
     restore(id) {
-      change(() => library.restoreNote(id))
+      write(() => library.restoreNote(id))
     },
     deletePermanently(id) {
-      change(() => library.deleteNotePermanently(id))
+      write(() => library.deleteNotePermanently(id))
       releaseUnusedUrls()
     },
     emptyTrash() {
-      change(() => library.emptyTrash())
+      write(() => library.emptyTrash())
       releaseUnusedUrls()
     },
     async addFiles(files) {
       const snippets: string[] = []
+      if (readOnly.value) return snippets
+      // the library these files are for: if another takes its place meanwhile (a lock), they are dropped
+      const lib = library
       for (const f of files) {
         if (f.size > MAX_ATTACHMENT_BYTES) {
           error.value = tooLargeMessage(f.name)
@@ -345,7 +447,10 @@ export function createAppModel(
           error.value = unreadableMessage(f.name)
           continue
         }
-        const a = library.addAttachment({ bytes, filename: f.name, mime: f.type || 'application/octet-stream', sha256: await sha256Hex(bytes) })
+        if (readOnly.value || library !== lib) return []
+        const sha256 = await sha256Hex(bytes)
+        if (readOnly.value || library !== lib) return []
+        const a = lib.addAttachment({ bytes, filename: f.name, mime: f.type || 'application/octet-stream', sha256 })
         snippets.push(attachmentSnippet(a))
       }
       return snippets
@@ -355,33 +460,43 @@ export function createAppModel(
       const id = attachmentId(url)
       const a = id ? library.attachment(id) : null
       if (!a) return null
+      let bytes = a.bytes
+      if (library.syncItem(a.id)?.bodyLoaded === false) {
+        // from another device, not downloaded yet: it downloads now, and the editor draws it when it arrives
+        const got = fetched.get(a.id)
+        if (!got) {
+          askFor(a.id)
+          return null
+        }
+        bytes = got
+      }
       let objectUrl = objectUrls.get(a.id)
       if (!objectUrl) {
-        objectUrl = URL.createObjectURL(new Blob([a.bytes as Uint8Array<ArrayBuffer>], { type: a.mime }))
+        objectUrl = URL.createObjectURL(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: a.mime }))
         objectUrls.set(a.id, objectUrl)
       }
       return { objectUrl, filename: a.filename, mime: a.mime, image: a.mime.toLowerCase().startsWith('image/') }
     },
-    createNotebook: (name, parentId) => change(() => (name.trim() === '' ? invalid() : library.createNotebook(name, parentId))),
+    createNotebook: (name, parentId) => write(() => (name.trim() === '' ? invalid() : library.createNotebook(name, parentId))),
     renameNotebook(id, name) {
-      change(() => (name.trim() === '' ? invalid() : library.renameNotebook(id, name)))
+      write(() => (name.trim() === '' ? invalid() : library.renameNotebook(id, name)))
     },
     moveNotebook(id, parentId) {
-      change(() => library.moveNotebook(id, parentId))
+      write(() => library.moveNotebook(id, parentId))
     },
     deleteNotebook(id) {
-      change(() => {
+      write(() => {
         const v = selection.value
         if (v.kind === 'notebook' && library.descendants(id).includes(v.id)) selection.value = { kind: 'all' }
         library.deleteNotebook(id)
       })
     },
-    createTag: (name) => change(() => library.createTag(name), name),
+    createTag: (name) => write(() => library.createTag(name), name),
     renameTag(id, name) {
-      change(() => library.renameTag(id, name), name)
+      write(() => library.renameTag(id, name), name)
     },
     deleteTag(id) {
-      change(() => {
+      write(() => {
         const v = selection.value
         if (v.kind === 'tag' && v.id === id) selection.value = { kind: 'all' }
         searchTagIds.value = searchTagIds.value.filter((t) => t !== id)
@@ -421,10 +536,53 @@ export function createAppModel(
     clearError() {
       error.value = null
     },
+    showError(message) {
+      error.value = message
+    },
+    currentLibrary: () => library,
+    keepAsCopy(noteId, body) {
+      // the draft (typed over the other device's text) is in `body`: drop it rather than save it over theirs
+      if (pending.peek()?.id === noteId) {
+        if (saveTimer !== null) timers.clear(saveTimer)
+        saveTimer = null
+        pending.value = null
+      }
+      write(() => {
+        const n = library.note(noteId)
+        if (!n || n.body === body) return
+        library.createConflictCopy({ ...n, body }, conflictTitle?.(n.title) ?? `${n.title} (conflict)`)
+      })
+    },
+    setLibrary(next, o = {}) {
+      if (saveTimer !== null) timers.clear(saveTimer)
+      saveTimer = null
+      dismissUndo()
+      unsubscribe()
+      releaseAllUrls()
+      unwatch()
+      library = next
+      unwatch = watch(library)
+      loadAttachment = o.loadAttachment
+      conflictTitle = o.conflictTitle
+      asked.clear()
+      fetched.clear()
+      unsubscribe = library.subscribe(onChange)
+      batch(() => {
+        pending.value = null
+        error.value = null
+        titleWantsFocus.value = false
+        clearSearch()
+        selection.value = { kind: 'all' }
+        version.value++
+        openId.value = rows.value[0]?.note.id ?? null
+      })
+    },
     dispose() {
       flush()
       dismissUndo()
       unsubscribe()
+      unwatch()
+      releaseAllUrls()
     },
   }
 

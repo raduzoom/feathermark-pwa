@@ -1,0 +1,325 @@
+/* Account screens: unlock, log in, create account and recovery, and the account menu. */
+.account-screen {
+  position: relative;
+  min-height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-24) var(--space-16);
+}
+.account-card {
+  position: relative;
+  width: min(420px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  padding: var(--space-32);
+  border-radius: var(--radius-card);
+  background: var(--c-glass-editor);
+  box-shadow: inset 0 0 0 1px var(--c-line-hairline);
+}
+.account-card .brand {
+  justify-content: center;
+}
+.account-title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: var(--type-md-h3-size);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.account-note {
+  margin: 0;
+  color: var(--c-text-secondary);
+  text-align: center;
+}
+.account-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+.account-error {
+  margin: 0;
+  color: var(--c-danger-text);
+}
+.account-signed-in,
+.account-footer,
+.account-build {
+  margin: 0;
+  font-size: var(--type-ui-meta-size);
+  color: var(--c-text-secondary);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.account-build {
+  font-family: var(--font-mono);
+}
+.account-menu-trigger {
+  max-width: 220px;
+  min-height: var(--h-button-desktop);
+  padding: 0 var(--space-16);
+  border-radius: var(--radius-pill);
+  box-shadow: inset 0 0 0 1px var(--c-action-outline);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--type-ui-label-size);
+}
+/* log in, create account, recovery (Frame.tsx) */
+.account-step {
+  margin: 0;
+  font-size: var(--type-ui-overline-size);
+  color: var(--c-text-secondary);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.account-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+.account-buttons,
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-8);
+}
+.account-actions {
+  justify-content: flex-start;
+}
+.account-aside {
+  margin-right: auto;
+  font-size: var(--type-ui-label-size);
+}
+.account-text {
+  margin: 0;
+  color: var(--c-text-body);
+}
+.account-meta {
+  margin: 0;
+  font-size: var(--type-ui-meta-size);
+  color: var(--c-text-secondary);
+}
+.account-subtitle,
+.account-accepted {
+  margin: 0;
+  font-weight: 600;
+}
+.account-accepted {
+  color: var(--c-accent);
+}
+.account-hint {
+  margin: 0;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-8);
+  font-size: var(--type-ui-meta-size);
+  color: var(--c-text-secondary);
+}
+.account-strength {
+  margin: 0;
+  font-size: var(--type-ui-label-size);
+  font-weight: 600;
+  color: var(--c-accent);
+}
+.account-bullets {
+  margin: 0;
+  padding-left: var(--space-24);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  color: var(--c-text-body);
+}
+.account-check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-8);
+}
+.account-check input {
+  margin-top: var(--space-4);
+}
+.field-mono {
+  font-family: var(--font-mono);
+}
+.recovery-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+.recovery-print-title {
+  display: none;
+  margin: 0;
+  font-weight: 600;
+}
+.recovery-key {
+  margin: 0;
+  padding: var(--space-16);
+  border-radius: var(--radius-input);
+  background: var(--c-surface-raised);
+  box-shadow: inset 0 0 0 1px var(--c-line-hairline);
+  font-family: var(--font-mono);
+  font-size: var(--type-md-h3-size);
+  font-weight: 600;
+  color: var(--c-text-primary);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+/* Print… prints the key and its warning, nothing else */
+@media print {
+  .account-screen .glow,
+  .account-card > :not(.account-form),
+  .account-buttons,
+  .account-content > :not(.recovery-sheet) {
+    display: none;
+  }
+  .account-card {
+    box-shadow: none;
+    background: none;
+  }
+  .recovery-print-title {
+    display: block;
+  }
+}
+@media (max-width: 639px) {
+  .account-buttons .button {
+    min-height: var(--h-target-ios-min);
+  }
+  .account-menu-trigger {
+    max-width: 120px;
+    min-height: var(--h-target-ios-min);
+  }
+  .account-card {
+    padding: var(--space-24) var(--space-16);
+  }
+}
+/* Settings › Sync (SettingsSync.tsx) */
+.settings-page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+.settings-heading {
+  margin: 0;
+  font-size: var(--type-ui-label-size);
+  color: var(--c-text-secondary);
+}
+.settings-note {
+  margin: 0 0 0 var(--space-24);
+  font-size: var(--type-ui-meta-size);
+  color: var(--c-text-secondary);
+}
+/* "FeatherMark is now open in another tab." over the read-only notes */
+.tab-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--space-8) var(--space-16);
+  padding: var(--space-8) var(--space-16);
+}
+.tab-line p {
+  margin: 0;
+}
+.settings-account {
+  display: flex;
+  align-items: center;
+  gap: var(--space-16);
+}
+.settings-avatar {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--c-action-primary);
+  color: var(--c-action-primary-on-primary);
+  font-weight: 600;
+}
+.settings-email,
+.settings-row-title {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.settings-email {
+  font-weight: 600;
+}
+.settings-meta {
+  margin: 0;
+  font-size: var(--type-ui-meta-size);
+  color: var(--c-text-secondary);
+}
+.settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding-top: var(--space-8);
+}
+.settings-subheading {
+  margin: 0;
+  font-size: var(--type-ui-label-size);
+}
+.settings-usage {
+  width: 100%;
+  accent-color: var(--c-action-primary);
+}
+.settings-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-16);
+}
+.settings-actions {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+/* the sync status line in the app bar (SyncLine.tsx) */
+.sync-line {
+  margin: 0 0 0 auto;
+  flex: 0 1 auto;
+  overflow: hidden;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-8);
+  min-width: 0;
+  font-size: var(--type-ui-meta-size);
+  color: var(--c-text-secondary);
+  white-space: nowrap;
+}
+.sync-line-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--c-text-body);
+}
+.sync-line-detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 999px) {
+  .sync-line-detail {
+    display: none;
+  }
+}
+/* "Loading this note…" above a note whose body hasn't arrived */
+.note-loading {
+  margin: 0 0 var(--space-8);
+  font-size: var(--type-ui-meta-size);
+  color: var(--c-text-secondary);
+}
+.dialog.settings {
+  width: min(560px, calc(100vw - 2 * var(--space-16)));
+  max-height: calc(100dvh - 2 * var(--space-16));
+  overflow-y: auto;
+}

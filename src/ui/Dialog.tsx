@@ -3,9 +3,14 @@
 import { signal } from '@preact/signals'
 import { useEffect, useRef, useState } from 'preact/hooks'
 
-export type DialogSpec =
+/** The screen a dialog was opened from: the notes ('app', the default) or the unlock screen. A dialog shows only on
+ *  its own screen, so one holding a note title or a notebook or tag name never shows on the unlock screen. */
+export type DialogScreen = 'app' | 'unlock'
+
+export type DialogSpec = { screen?: DialogScreen } & (
   | { kind: 'name'; title: string; initial?: string; button: string; submit: (name: string) => string | null }
   | { kind: 'confirm'; title: string; message: string; button: string; onConfirm: () => void }
+)
 
 export const activeDialog = signal<DialogSpec | null>(null)
 
@@ -17,9 +22,15 @@ export function confirm(spec: Omit<Extract<DialogSpec, { kind: 'confirm' }>, 'ki
   activeDialog.value = { kind: 'confirm', ...spec }
 }
 
-export function DialogHost() {
+/** The screen changed (locked, unlocked, signed out): a dialog opened on another screen goes, and its text with it. */
+export function closeDialogsNotOn(screen: DialogScreen | null): void {
+  const spec = activeDialog.peek()
+  if (spec && (spec.screen ?? 'app') !== screen) activeDialog.value = null
+}
+
+export function DialogHost({ screen = 'app' }: { screen?: DialogScreen }) {
   const spec = activeDialog.value
-  return spec ? <Dialog key={spec.title} spec={spec} /> : null
+  return spec && (spec.screen ?? 'app') === screen ? <Dialog key={spec.title} spec={spec} /> : null
 }
 
 function Dialog({ spec }: { spec: DialogSpec }) {
