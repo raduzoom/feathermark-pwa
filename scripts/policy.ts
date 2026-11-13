@@ -34,8 +34,10 @@ export function securityHeaders(opts: PolicyOptions = {}): Record<string, string
   }
 }
 
-/** Cloudflare Pages `_headers` text for every path. */
+/** Cloudflare Pages `_headers` text: the security headers for every path, and a year's caching for the hashed
+ *  files under /assets/ (their names change with their content). The page itself keeps Pages' default, which
+ *  revalidates, so a new deployment is seen at once. */
 export function headersFile(opts: PolicyOptions = {}): string {
   const lines = Object.entries(securityHeaders(opts)).map(([name, value]) => `  ${name}: ${value}`)
-  return ['/*', ...lines].join('\n') + '\n'
+  return ['/*', ...lines, '/assets/*', '  Cache-Control: public, max-age=31536000, immutable'].join('\n') + '\n'
 }

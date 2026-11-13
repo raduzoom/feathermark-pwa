@@ -9,14 +9,27 @@ const all = [
   { name: 'webkit', use: { ...devices['Desktop Safari'] } },
 ]
 
-export default defineConfig({
-  testDir: 'tests/e2e',
-  outputDir: 'test-results',
-  use: { baseURL: 'http://localhost:8431' },
-  projects: all.filter((p) => engines.includes(p.name)),
-  webServer: {
-    command: 'FEATHER_SPIKE=1 pnpm build && pnpm preview',
-    url: 'http://localhost:8431',
-    reuseExistingServer: false,
-  },
-})
+// FEATHER_LIVE_URL (e.g. https://app.feathermark.com) runs tests/live/ against the published demo instead: no
+// local server, the same leak fixture.
+const live = process.env.FEATHER_LIVE_URL
+
+export default defineConfig(
+  live
+    ? {
+        testDir: 'tests/live',
+        outputDir: 'test-results',
+        use: { baseURL: live },
+        projects: all.filter((p) => engines.includes(p.name)),
+      }
+    : {
+        testDir: 'tests/e2e',
+        outputDir: 'test-results',
+        use: { baseURL: 'http://localhost:8431' },
+        projects: all.filter((p) => engines.includes(p.name)),
+        webServer: {
+          command: 'FEATHER_SPIKE=1 pnpm build && pnpm preview',
+          url: 'http://localhost:8431',
+          reuseExistingServer: false,
+        },
+      },
+)

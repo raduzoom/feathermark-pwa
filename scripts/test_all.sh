@@ -27,6 +27,8 @@ step build;        pnpm build
 step headers;      test -f dist/_headers
 step no-spike;     test ! -e dist/spike
 step bundle-size;  node scripts/bundle-size.ts --check
-step "e2e ($FEATHER_ENGINES)"; pnpm e2e
+step "e2e ($FEATHER_ENGINES)"; pnpm e2e --grep-invert @speed
+# timing tests alone, one worker: other workers running beside them skew the numbers
+step "speed ($FEATHER_ENGINES)"; pnpm e2e --grep @speed --workers=1
 
 echo "all tests: OK"

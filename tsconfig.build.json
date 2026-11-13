@@ -1,0 +1,8 @@
+{
+  // The production build's check: the app and its build scripts only. The Argon2id test page (src/spike) and the
+  // tests read ../universal/test-vectors, which a build server doesn't have; `pnpm typecheck` (in
+  // scripts/test_all.sh) checks everything.
+  "extends": "./tsconfig.json",
+  "include": ["src", "scripts", "vite.config.ts"],
+  "exclude": ["src/spike"]
+}

@@ -2,11 +2,11 @@
 
 FeatherMark in a browser, at `app.feathermark.com`. Without logging in it is a demo: the real app with sample notes, where nothing you write is saved and nothing leaves your computer. Logged in, it opens your Feather Cloud notes, decrypted in the browser, and syncs them with the Mac, iPhone and iPad apps.
 
-Work in progress: Phase 17 (foundations) of the plan in [feather-note-universal](https://github.com/raduzoom/feather-note-universal).
+The demo has the library, search and a live-preview Markdown editor with the block menu and attachments (Phases 17–19 of the plan in feather-note-universal). Accounts and sync come in Phase 20.
 
 ## Run it
 
-Needs Node 24 and pnpm, and the `universal` repo checked out beside this one (the tests read its design tokens and crypto test vectors).
+Needs Node 24 and pnpm. The tests also need the `universal` repo checked out beside this one (they read its design tokens, crypto test vectors and editor fixtures); `pnpm build` doesn't.
 
 ```bash
 pnpm install --frozen-lockfile
