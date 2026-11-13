@@ -12,6 +12,8 @@ export type Mark =
   | { type: 'checkbox'; from: number; to: number; checked: boolean }
   | { type: 'image'; from: number; to: number; url: string; alt: string }
   | { type: 'chip'; from: number; to: number; url: string; label: string }
+  /** A fenced code block's bar (language menu and Copy), drawn on its first content line. */
+  | { type: 'codeBar'; at: number; language: string | null; active: boolean }
 
 const ATTACHMENT = 'feather://attachment/'
 export const isAttachmentUrl = (url: string) => url.toLowerCase().startsWith(ATTACHMENT)
@@ -103,18 +105,25 @@ function planLive(b: Block, text: string, touches: (r: Range) => boolean, out: M
       for (const m of b.markers) hide(m)
       break
     case 'codeBlock': {
-      const inside = touches(b.range)
       const starts = lineStarts(text, b.range)
       starts.forEach((at, i) => out.push({ type: 'line', at, class: `cm-code${i === 0 ? ' cm-code-first' : ''}${i === starts.length - 1 ? ' cm-code-last' : ''}` }))
       for (const t of codeTokens(text.slice(b.content.from, b.content.to), b.language)) {
         out.push({ type: 'span', from: b.content.from + t.from, to: b.content.from + t.to, class: `cm-tok-${t.kind}` })
       }
-      for (const m of b.markers) {
-        if (inside) reveal(m)
-        else {
+      // only the fence line the caret is on shows
+      let openShown = false
+      b.markers.forEach((m, i) => {
+        if (touches(withoutBreak(text, m))) {
+          reveal(m)
+          if (i === 0) openShown = true
+        } else {
           hide(m)
           out.push({ type: 'line', at: lineStart(text, m.from), class: 'cm-fence-hidden' })
         }
+      })
+      if (b.markers.length > 0 && !openShown && b.content.to > b.content.from) {
+        out.push({ type: 'line', at: b.content.from, class: 'cm-code-head' })
+        out.push({ type: 'codeBar', at: b.content.from, language: b.language, active: touches(b.range) })
       }
       return // no inline styling inside code
     }

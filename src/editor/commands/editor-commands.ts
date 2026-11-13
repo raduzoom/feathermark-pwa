@@ -109,3 +109,47 @@ export function toggleCheckbox(_text: string, doc: MarkdownDocument, at: number)
   }
   return null
 }
+
+/** The code bar's language menu (specs/editor.md "Code bar"): `[label, id]`, the id written as the info string. */
+export const CODE_LANGUAGES: readonly (readonly [string, string])[] = [
+  ['Plain text', ''], ['Bash', 'bash'], ['C', 'c'], ['C++', 'cpp'], ['C#', 'csharp'], ['CSS', 'css'], ['Go', 'go'],
+  ['HTML', 'html'], ['Java', 'java'], ['JavaScript', 'javascript'], ['JSON', 'json'], ['Kotlin', 'kotlin'],
+  ['Markdown', 'markdown'], ['PHP', 'php'], ['Python', 'python'], ['Ruby', 'ruby'], ['Rust', 'rust'], ['SQL', 'sql'],
+  ['Swift', 'swift'], ['TypeScript', 'typescript'], ['YAML', 'yaml'],
+]
+
+/** Replaces the info string of the fenced code block holding `at` with `language` ("" for none); the caret stays. */
+export function setCodeLanguage(text: string, doc: MarkdownDocument, at: number, language: string, sel: Selection): Edit | null {
+  for (const b of doc.blocks) {
+    if (at < b.range.from || at > b.range.to || b.kind !== 'codeBlock') continue
+    const open = b.markers[0]
+    if (!open) return null
+    const l = line(text, open.from)
+    const fence = /^[ \t]*(`{3,}|~{3,})/.exec(l.text)
+    if (!fence) return null
+    const from = l.from + fence[0].length
+    if (text.slice(from, l.to) === language) return null
+    const shift = (p: number) => (p <= from ? p : p >= l.to ? p - (l.to - from) + language.length : from + language.length)
+    return { from, to: l.to, insert: language, selection: { from: shift(sel.from), to: shift(sel.to) } }
+  }
+  return null
+}
+
+/** Backspace at the start of a fenced block's content, or Delete at its end, would join a hidden fence line: an
+ *  edit that does nothing, or, for Backspace in a block of blank lines, one that removes the block. */
+export function codeFenceGuard(text: string, doc: MarkdownDocument, sel: Selection, key: 'backspace' | 'delete'): Edit | null {
+  if (sel.to !== sel.from) return null
+  const p = sel.from
+  for (const b of doc.blocks) {
+    if (b.kind !== 'codeBlock' || b.markers.length === 0 || p < b.range.from || p > b.range.to) continue
+    const c = b.content
+    if (key === 'backspace' && p === c.from) {
+      if (/^[\s]*$/.test(text.slice(c.from, c.to))) return { from: b.range.from, to: b.range.to, insert: '', selection: caretAt(b.range.from) }
+      return { from: p, to: p, insert: '', selection: caretAt(p) }
+    }
+    let end = c.to
+    while (end > c.from && (text.charCodeAt(end - 1) === 0x0a || text.charCodeAt(end - 1) === 0x0d)) end--
+    if (key === 'delete' && b.markers.length === 2 && p === end && c.to > c.from) return { from: p, to: p, insert: '', selection: caretAt(p) }
+  }
+  return null
+}

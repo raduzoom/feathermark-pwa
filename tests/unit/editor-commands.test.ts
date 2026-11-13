@@ -5,6 +5,9 @@ import { parseDocument } from '../../src/editor/markdown/document.ts'
 import {
   activeFormats,
   applyEdit,
+  CODE_LANGUAGES,
+  codeFenceGuard,
+  setCodeLanguage,
   attachmentSnippets,
   backspaceAtItemStart,
   backtab,
@@ -214,4 +217,45 @@ test('commandsNeverTouchOtherLines', () => {
       }
     }
   }
+})
+
+describe('setCodeLanguage (specs/editor.md "Code bar")', () => {
+  const run = (t: string, at: number, lang: string, sel = { from: at, to: at }) => {
+    const e = setCodeLanguage(t, parseDocument(t), at, lang, sel)
+    return e && { text: applyEdit(t, e), selection: e.selection }
+  }
+  test('sets, replaces and clears the info string, keeping indent and fence', () => {
+    expect(run('```\nx\n```', 4, 'swift')).toEqual({ text: '```swift\nx\n```', selection: { from: 9, to: 9 } })
+    expect(run('  ~~~~js  \nx\n~~~~', 11, 'python')!.text).toBe('  ~~~~python\nx\n~~~~')
+    expect(run('```js\r\nx\r\n```', 7, '')!.text).toBe('```\r\nx\r\n```')
+  })
+  test('nothing outside a fenced block, or when unchanged', () => {
+    expect(run('plain', 1, 'go')).toBeNull()
+    expect(run('    indented', 5, 'go')).toBeNull()
+    expect(run('```go\nx\n```', 6, 'go')).toBeNull()
+  })
+  test('the menu ids', () => {
+    expect(CODE_LANGUAGES[0]).toEqual(['Plain text', ''])
+    expect(CODE_LANGUAGES.map(([, id]) => id)).toContain('typescript')
+  })
+})
+
+describe('codeFenceGuard (specs/editor.md "Commands")', () => {
+  const run = (t: string, p: number, key: 'backspace' | 'delete') => {
+    const e = codeFenceGuard(t, parseDocument(t), { from: p, to: p }, key)
+    return e && applyEdit(t, e)
+  }
+  const t = 'a\n\n```js\nx = 1\ny\n```\n\nb'
+  test('Backspace at the content start and Delete at its end change nothing', () => {
+    expect(run(t, 9, 'backspace')).toBe(t)
+    expect(run(t, 16, 'delete')).toBe(t)
+  })
+  test('elsewhere they are left to the default', () => {
+    expect(run(t, 10, 'backspace')).toBeNull()
+    expect(run(t, 15, 'delete')).toBeNull()
+    expect(run(t, 1, 'backspace')).toBeNull()
+  })
+  test('Backspace in a block of blank lines removes it', () => {
+    expect(run('a\n\n```\n\n```\n\nb', 7, 'backspace')).toBe('a\n\n\n\nb')
+  })
 })

@@ -6,7 +6,7 @@ import { defineLanguageFacet, Language, LanguageSupport, syntaxTree } from '@cod
 import { Facet, type EditorState, type Extension, type Range as CMRange } from '@codemirror/state'
 import { textOfDoc } from './doc-text.ts'
 import { Decoration, EditorView, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from '@codemirror/view'
-import { toggleCheckbox } from './commands/index.ts'
+import { CODE_LANGUAGES, setCodeLanguage, toggleCheckbox } from './commands/index.ts'
 import { documentFromTree, type Block } from './markdown/document.ts'
 import { limitedMarkdownParser } from './markdown/parser.ts'
 import { planPreview, type Mark } from './preview-plan.ts'
@@ -145,6 +145,67 @@ class ImageWidget extends WidgetType {
   }
 }
 
+/** A code block's bar (specs/editor.md "Code bar"): the language menu and Copy. */
+class CodeBarWidget extends WidgetType {
+  constructor(
+    readonly language: string | null,
+    readonly active: boolean,
+  ) {
+    super()
+  }
+  override eq(o: CodeBarWidget) {
+    return o.language === this.language && o.active === this.active
+  }
+  toDOM(view: EditorView) {
+    const bar = document.createElement('span')
+    bar.className = 'cm-code-bar' + (this.active ? ' cm-code-bar-active' : '')
+    const current = this.language ?? ''
+    // the label shows the language; a transparent native menu over it picks one
+    const picker = document.createElement('span')
+    picker.className = 'cm-code-language'
+    const label = document.createElement('span')
+    label.setAttribute('aria-hidden', 'true')
+    label.textContent = CODE_LANGUAGES.find(([, id]) => id === current)?.[0] ?? current
+    const select = document.createElement('select')
+    select.setAttribute('aria-label', 'Code language')
+    const known = CODE_LANGUAGES.some(([, id]) => id === current)
+    for (const [label, id] of known ? CODE_LANGUAGES : [[current, current] as const, ...CODE_LANGUAGES]) {
+      const o = document.createElement('option')
+      o.value = id
+      o.textContent = label
+      o.selected = id === current
+      select.append(o)
+    }
+    select.disabled = view.state.readOnly
+    select.addEventListener('change', () => {
+      const pos = view.posAtDOM(bar)
+      const text = docText(view.state)
+      const sel = view.state.selection.main
+      const e = setCodeLanguage(text, documentFromTree(syntaxTree(view.state), text, pos, pos), pos, select.value, sel)
+      if (e) view.dispatch({ changes: { from: e.from, to: e.to, insert: e.insert }, selection: { anchor: e.selection.from, head: e.selection.to }, annotations: isolateHistory.of('full'), userEvent: 'input.language' })
+      view.focus()
+    })
+    const copy = document.createElement('button')
+    copy.type = 'button'
+    copy.className = 'cm-code-copy'
+    copy.textContent = 'Copy'
+    copy.addEventListener('mousedown', (e) => e.preventDefault()) // the caret stays in the editor
+    copy.addEventListener('click', () => {
+      const pos = view.posAtDOM(bar)
+      const text = docText(view.state)
+      const block = documentFromTree(syntaxTree(view.state), text, pos, pos).blocks.find((b) => b.kind === 'codeBlock' && b.range.from <= pos && pos <= b.range.to)
+      if (block?.kind !== 'codeBlock') return
+      void navigator.clipboard.writeText(text.slice(block.content.from, block.content.to).replace(/\r?\n$/, ''))
+    })
+    picker.append(label, select)
+    bar.append(picker, copy)
+    return bar
+  }
+  override ignoreEvent() {
+    return true
+  }
+}
+
 const hideDeco = Decoration.replace({})
 const bulletDeco = Decoration.replace({ widget: new BulletWidget() })
 const lineDecos = new Map<string, Decoration>()
@@ -175,6 +236,9 @@ function decorate(marks: Mark[], resolve: (url: string) => ResolvedAttachment | 
         atomic.push(d)
         break
       }
+      case 'codeBar':
+        all.push(Decoration.widget({ widget: new CodeBarWidget(m.language, m.active), side: -1 }).range(m.at))
+        break
       case 'image':
         all.push(Decoration.widget({ widget: new ImageWidget(m.url, m.alt, resolve(m.url)), side: -1 }).range(m.from))
         break

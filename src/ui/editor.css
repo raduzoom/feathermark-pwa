@@ -299,6 +299,83 @@
   font-size: 0;
   line-height: 0;
 }
+/* The code bar (specs/editor.md "Code bar"): language menu and Copy, top right of the block. */
+.note-editor .cm-editor .cm-line.cm-code-head {
+  position: relative;
+  padding-top: var(--space-40);
+}
+.note-editor .cm-editor .cm-fence-hidden.cm-code-first + .cm-code-head {
+  border-top-left-radius: var(--radius-code);
+  border-top-right-radius: var(--radius-code);
+}
+/* the closing fence hidden: the last code line closes the block */
+.note-editor .cm-editor .cm-code:has(+ .cm-fence-hidden.cm-code-last) {
+  border-bottom-left-radius: var(--radius-code);
+  border-bottom-right-radius: var(--radius-code);
+  padding-bottom: var(--space-8);
+}
+.note-editor .cm-editor .cm-code-bar {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-8);
+  display: flex;
+  gap: var(--space-4);
+  font-family: var(--font-sans);
+  font-size: var(--type-ui-label-size);
+  line-height: 1;
+}
+.note-editor .cm-editor .cm-code-language,
+.note-editor .cm-editor .cm-code-copy {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: var(--h-button-desktop);
+  padding: 0 var(--space-8);
+  border: none;
+  border-radius: var(--radius-code);
+  background: transparent;
+  color: var(--c-md-code-block-syntax-comment);
+  font: inherit;
+  cursor: pointer;
+}
+.note-editor .cm-editor .cm-code-language::after {
+  content: '▾';
+  margin-left: var(--space-4);
+}
+.note-editor .cm-editor .cm-code-language select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  opacity: 0;
+  color: initial;
+  font: inherit;
+  cursor: pointer;
+}
+.note-editor .cm-editor .cm-code-language:hover,
+.note-editor .cm-editor .cm-code-copy:hover,
+.note-editor .cm-editor .cm-code-language:focus-within,
+.note-editor .cm-editor .cm-code-copy:focus-visible {
+  color: var(--c-md-code-block-text);
+}
+.note-editor .cm-editor .cm-code-language:has(select:focus-visible),
+.note-editor .cm-editor .cm-code-copy:focus-visible {
+  outline: 2px solid var(--c-md-code-block-text);
+}
+/* Copy shows while the caret is in the block, or the pointer is over the bar */
+.note-editor .cm-editor .cm-code-copy {
+  visibility: hidden;
+}
+.note-editor .cm-editor .cm-code-bar-active .cm-code-copy,
+.note-editor .cm-editor .cm-code-bar:hover .cm-code-copy,
+.note-editor .cm-editor .cm-code-copy:focus-visible {
+  visibility: visible;
+}
+@media (max-width: 639px) {
+  .note-editor .cm-editor .cm-line.cm-code-head { padding-top: var(--space-48); }
+  .note-editor .cm-editor .cm-code-bar { top: 0; }
+  .note-editor .cm-editor .cm-code-language,
+  .note-editor .cm-editor .cm-code-copy { height: var(--h-target-ios-min); }
+}
 .note-editor .cm-editor .cm-code .cm-marker {
   color: var(--c-md-code-block-syntax-comment);
 }

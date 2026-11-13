@@ -38,17 +38,32 @@ test('a selection reveals only at its two ends', () => {
   expect(hidden(t, marks)).toEqual(['**', '**'])
 })
 
-test('fences hide unless the caret is in the block', () => {
+test('fences hide; only the fence line the caret is on shows', () => {
   const t = 'x\n\n```js\nlet a = "s" // c\n```\n\ny'
+  const bars = (marks: Mark[]) => marks.flatMap((m) => (m.type === 'codeBar' ? [`${m.at}:${m.language}:${m.active}`] : []))
   const away = plan(t, at(0))
   expect(hidden(t, away)).toEqual(['```js', '```'])
   expect(lines(away).filter((l) => l.includes('cm-fence-hidden')).length).toBe(2)
   expect(spans(t, away, 'cm-tok-keyword')).toEqual(['let'])
   expect(spans(t, away, 'cm-tok-string')).toEqual(['"s"'])
   expect(spans(t, away, 'cm-tok-comment')).toEqual(['// c'])
+  expect(bars(away)).toEqual(['9:js:false'])
+  // the caret in the content: fences stay hidden, the bar is active
   const inside = plan(t, at(12))
-  expect(hidden(t, inside)).toEqual([])
-  expect(spans(t, inside, 'cm-marker')).toEqual(['```js\n', '```'])
+  expect(hidden(t, inside)).toEqual(['```js', '```'])
+  expect(bars(inside)).toEqual(['9:js:true'])
+  // at the start and end of the content: still hidden
+  expect(hidden(t, plan(t, at(9)))).toEqual(['```js', '```'])
+  expect(hidden(t, plan(t, at(25)))).toEqual(['```js', '```'])
+  // on the opening fence: it shows, and the bar isn't drawn
+  const onOpen = plan(t, at(5))
+  expect(hidden(t, onOpen)).toEqual(['```'])
+  expect(spans(t, onOpen, 'cm-marker')).toEqual(['```js\n'])
+  expect(bars(onOpen)).toEqual([])
+  // on the closing fence: only it shows
+  const onClose = plan(t, at(27))
+  expect(hidden(t, onClose)).toEqual(['```js'])
+  expect(bars(onClose)).toEqual(['9:js:true'])
 })
 
 test('list bullets become a bullet, numbers stay', () => {
@@ -138,7 +153,7 @@ test('no mark ever covers a character outside the text, and hides never overlap'
       const replaced = marks.filter((m) => m.type === 'hide' || m.type === 'bullet' || m.type === 'checkbox' || m.type === 'chip').map((m) => m as { from: number; to: number })
       replaced.sort((a, b) => a.from - b.from)
       for (const m of marks) {
-        const [from, to] = m.type === 'line' ? [m.at, m.at] : [m.from, m.to]
+        const [from, to] = m.type === 'line' || m.type === 'codeBar' ? [m.at, m.at] : [m.from, m.to]
         expect(from >= 0 && to <= text.length && from <= to, `${name} at ${p}: ${JSON.stringify(m)}`).toBe(true)
       }
       for (let i = 1; i < replaced.length; i++) expect(replaced[i]!.from >= replaced[i - 1]!.to, `${name} at ${p}: overlap`).toBe(true)
