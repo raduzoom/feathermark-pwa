@@ -1,0 +1,27 @@
+.spike-action {
+  min-height: var(--h-target-ios-min);
+  margin-right: var(--space-8);
+  padding: 0 var(--space-24);
+  border-radius: var(--radius-pill);
+  background: var(--c-action-primary);
+  color: var(--c-action-primary-on-primary);
+  font-weight: 600;
+}
+.spike-action:disabled {
+  background: var(--c-action-disabled);
+  color: var(--c-action-disabled-on-disabled);
+}
+#account {
+  display: block;
+  margin: var(--space-16) 0;
+  font-weight: 600;
+}
+#account-report {
+  padding: var(--space-16);
+  border-radius: var(--radius-card);
+  background: var(--c-surface-raised);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <title>FeatherMark: crypto vectors test</title>
+  </head>
+  <body>
+    <main class="spike">
+      <h1>Crypto vectors test</h1>
+      <p>Runs every FeatherMark crypto test vector in this browser: the functions in a test worker, then the account chain (log in, unwrap, open, recovery) through the app's crypto worker. Takes a few seconds. Nothing is sent anywhere.</p>
+      <button type="button" class="spike-action" id="run">Run vectors</button>
+      <output id="summary"></output>
+      <table id="results">
+        <thead><tr><th>Where</th><th>File</th><th>Passed</th><th>Failed</th><th>Skipped</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <h2>Account</h2>
+      <p>Signs up with a new password, seals a note with that session, then opens it from a session made by logging in, one made with the recovery key, and one after a password change.</p>
+      <button type="button" class="spike-action" id="account-run">Sign up then log in</button>
+      <output id="account"></output>
+      <p>Copy this and paste it back:</p>
+      <pre id="report"></pre>
+      <pre id="account-report"></pre>
+    </main>
+    <script type="module" src="/src/spike/vectors.ts"></script>
+  </body>
+</html>

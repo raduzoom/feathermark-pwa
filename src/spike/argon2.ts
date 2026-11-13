@@ -2,6 +2,7 @@
 // each in its own worker, one derivation at a time, and shows match and time per case.
 import argon2Vectors from '@vectors/argon2id.json'
 import { fromHex, toHex } from '../core/bytes.ts'
+import { deriveKeys } from '../core/crypto/kdf.ts'
 import { createCryptoClient } from '../worker/crypto-client.ts'
 import type { CompareImpl, CompareRequest, CompareResponse } from './argon2-compare.worker.ts'
 import '../ui/tokens.css'
@@ -19,11 +20,18 @@ const body = document.querySelector('#results tbody') as HTMLTableSectionElement
 const report = document.getElementById('report') as HTMLPreElement
 
 /** One derivation function per build; each lives in its own worker, stopped when its cases are done. */
-function startImpl(impl: Impl): { derive: (c: Case) => Promise<Uint8Array>; stop: () => void } {
+function startImpl(impl: Impl): { derive: (c: Case) => Promise<Uint8Array>; expected: (c: Case) => string; stop: () => void } {
   if (impl === 'hash-wasm') {
+    // The app's crypto worker keeps the root to itself, so this build is checked by the auth key the root
+    // gives (one BLAKE2b after the Argon2id): it matches exactly when the root does.
     const client = createCryptoClient()
     return {
-      derive: (c) => client.deriveRoot(c.password, fromHex(c.salt), { alg: 'argon2id13', t: c.t, m_kib: c.m_kib, p: c.p }),
+      derive: async (c) => {
+        const { authKey, kek } = await client.logInKeys(c.password, fromHex(c.salt), { alg: 'argon2id13', t: c.t, m_kib: c.m_kib, p: c.p })
+        await client.forget(kek)
+        return authKey
+      },
+      expected: (c) => toHex(deriveKeys(fromHex(c.root)).authKey),
       stop: () => client.terminate(),
     }
   }
@@ -44,6 +52,7 @@ function startImpl(impl: Impl): { derive: (c: Case) => Promise<Uint8Array>; stop
         const request: CompareRequest = { impl, password: c.password, salt: fromHex(c.salt), t: c.t, m_kib: c.m_kib, p: c.p }
         worker.postMessage(request)
       }),
+    expected: (c) => c.root,
     stop: () => worker.terminate(),
   }
 }
@@ -137,7 +146,7 @@ run.addEventListener('click', async () => {
       let detail = ''
       const start = performance.now()
       try {
-        match = String(toHex(await runner.derive(c)) === c.root)
+        match = String(toHex(await runner.derive(c)) === runner.expected(c))
       } catch (e) {
         detail = e instanceof Error ? e.message : String(e)
       }
