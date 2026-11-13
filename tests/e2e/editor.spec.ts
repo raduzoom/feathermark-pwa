@@ -19,8 +19,12 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/')
 })
 
-test('opening and closing every corpus note changes no byte', async ({ page }) => {
+test('opening and closing every corpus note changes no byte', async ({ context }) => {
   for (const name of readdirSync(corpusDir).filter((f) => f.endsWith('.md'))) {
+    // a page of its own per note: Chromium blocks a page's 11th download, and each note downloads twice
+    const page = await context.newPage()
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.goto('/')
     const text = readFileSync(join(corpusDir, name), 'utf8')
     await newNoteWith(page, name, text)
     expect(await downloadedBody(page), `${name} as pasted`).toBe(text)
@@ -28,6 +32,7 @@ test('opening and closing every corpus note changes no byte', async ({ page }) =
     await open(page, name)
     await body(page).click()
     expect(await downloadedBody(page), `${name} after opening it again`).toBe(text)
+    await page.close()
   }
 })
 
