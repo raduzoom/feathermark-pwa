@@ -153,3 +153,25 @@ export function codeFenceGuard(text: string, doc: MarkdownDocument, sel: Selecti
   }
   return null
 }
+
+/** Down arrow on the last line of a fenced code block that ends the note (only blank lines after it): the caret goes
+ *  to the line below, and a line break is added first when the note ends at the block. */
+export function leaveCodeBlock(text: string, doc: MarkdownDocument, sel: Selection): Edit | null {
+  if (sel.to !== sel.from) return null
+  const p = sel.from
+  for (const b of doc.blocks) {
+    if (b.kind !== 'codeBlock' || b.markers.length !== 2 || p < b.range.from || p > b.range.to) continue
+    if (!/^\s*$/.test(text.slice(b.range.to))) return null
+    let end = b.content.to
+    while (end > b.content.from && (text.charCodeAt(end - 1) === 0x0a || text.charCodeAt(end - 1) === 0x0d)) end--
+    if (p < line(text, end).from) return null // not on the last line yet: the default moves down
+    const close = line(text, b.markers[1]!.from)
+    if (close.ending !== '') {
+      const below = close.to + close.ending.length
+      return { from: below, to: below, insert: '', selection: caretAt(below) }
+    }
+    const ending = previousEnding(text, close.from)
+    return { from: close.to, to: close.to, insert: ending, selection: caretAt(close.to + ending.length) }
+  }
+  return null
+}

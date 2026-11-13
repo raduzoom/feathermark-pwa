@@ -7,6 +7,7 @@ import {
   applyEdit,
   CODE_LANGUAGES,
   codeFenceGuard,
+  leaveCodeBlock,
   setCodeLanguage,
   attachmentSnippets,
   backspaceAtItemStart,
@@ -257,5 +258,27 @@ describe('codeFenceGuard (specs/editor.md "Commands")', () => {
   })
   test('Backspace in a block of blank lines removes it', () => {
     expect(run('a\n\n```\n\n```\n\nb', 7, 'backspace')).toBe('a\n\n\n\nb')
+  })
+})
+
+describe('leaveCodeBlock (specs/editor.md "Commands")', () => {
+  const run = (t: string, p: number) => {
+    const e = leaveCodeBlock(t, parseDocument(t), { from: p, to: p })
+    return e && { text: applyEdit(t, e), caret: e.selection.from }
+  }
+  const t = 'a\n\n```js\nx = 1\ny\n```'
+  test('from the last code line or the closing fence, at the note end, adds a line below', () => {
+    expect(run(t, 15)).toEqual({ text: t + '\n', caret: t.length + 1 })
+    expect(run(t, t.length)).toEqual({ text: t + '\n', caret: t.length + 1 })
+    expect(run(t.replaceAll('\n', '\r\n'), t.length + 5)!.text.endsWith('```\r\n')).toBe(true)
+  })
+  test('with a blank line after it, moves there without an edit', () => {
+    expect(run(t + '\n\n', 15)).toEqual({ text: t + '\n\n', caret: t.length + 1 })
+  })
+  test('the default otherwise', () => {
+    expect(run(t, 10)).toBeNull() // first code line
+    expect(run(t + '\n\nb', 15)).toBeNull() // a block after it
+    expect(run('```\nx', 4)).toBeNull() // unclosed
+    expect(run('a', 0)).toBeNull()
   })
 })

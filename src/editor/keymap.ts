@@ -4,7 +4,7 @@ import { insertNewline, isolateHistory } from '@codemirror/commands'
 import { ensureSyntaxTree, syntaxTree } from '@codemirror/language'
 import { EditorSelection, Prec, type EditorState, type Extension } from '@codemirror/state'
 import { keymap, type Command, type EditorView } from '@codemirror/view'
-import { backspaceAtItemStart, backtab, codeFenceGuard, link, returnKey, tab, toggleCheckbox, toggleInline, type Edit, type InlineFormat, type Selection } from './commands/index.ts'
+import { backspaceAtItemStart, backtab, codeFenceGuard, leaveCodeBlock, link, returnKey, tab, toggleCheckbox, toggleInline, type Edit, type InlineFormat, type Selection } from './commands/index.ts'
 import { attachmentOpener, docText } from './live-preview.ts'
 import { documentFromTree, type MarkdownDocument } from './markdown/document.ts'
 
@@ -79,6 +79,7 @@ export const editorKeymap: Extension = Prec.high(
     { key: 'Tab', run: (v) => run(tab)(v) || insertTab(v), shift: run(backtab) },
     { key: 'Backspace', run: (v) => run((t, d, s) => codeFenceGuard(t, d, s, 'backspace'))(v) || run(backspaceAtItemStart)(v) },
     { key: 'Delete', run: run((t, d, s) => codeFenceGuard(t, d, s, 'delete')) },
+    { key: 'ArrowDown', run: run(leaveCodeBlock) },
     { key: 'Mod-b', run: inline('bold') },
     { key: 'Mod-i', run: inline('italic') },
     { key: 'Mod-e', run: inline('code') },
