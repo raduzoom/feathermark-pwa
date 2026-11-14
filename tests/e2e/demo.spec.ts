@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
+import { noteMore } from './support/note-more'
 
 const library = (page: Page) => page.getByRole('navigation', { name: 'Library' })
 const list = (page: Page) => page.getByRole('listbox', { name: 'Notes' })
@@ -46,6 +47,25 @@ test('at tablet width the drawer holds the library', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 2, name: 'Travel' })).toBeVisible()
 })
 
+test('hovering or focusing "Get FeatherMark" says "Keep what you write" without changing its width or name', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/')
+  const link = page.getByRole('link', { name: 'Get FeatherMark' })
+  const width = (await link.boundingBox())!.width
+  await expect(link.getByText('Keep what you write')).toBeHidden()
+  await link.hover()
+  await expect(link.getByText('Keep what you write')).toBeVisible()
+  await expect(link.getByText('Get FeatherMark')).toBeHidden()
+  expect((await link.boundingBox())!.width).toBe(width)
+  await page.mouse.move(800, 600)
+  await expect(link.getByText('Get FeatherMark')).toBeVisible()
+  // keyboard focus (:focus-visible): WebKit, like Safari, doesn't Tab to links, so focus it after a key press
+  await page.keyboard.press('Shift')
+  await link.focus()
+  await expect(link.getByText('Keep what you write')).toBeVisible()
+  await expect(link).toHaveAccessibleName('Get FeatherMark')
+})
+
 test('a whole demo session stores and sends nothing', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 })
   await page.goto('/')
@@ -64,13 +84,14 @@ test('a whole demo session stores and sends nothing', async ({ page }) => {
   await toolbar.getByRole('button', { name: 'Tags' }).click()
   await page.getByRole('menuitemcheckbox', { name: 'checked' }).click()
   await page.keyboard.press('Escape')
-  await page.getByRole('searchbox', { name: 'Search all notes' }).fill('find later')
+  await page.keyboard.press('ControlOrMeta+k')
+  await page.getByRole('combobox', { name: 'Search all notes' }).fill('find later')
   await expect(list(page).getByRole('option')).toHaveCount(1)
   await page.keyboard.press('Escape')
-  await Promise.all([page.waitForEvent('download'), toolbar.getByRole('button', { name: 'Download .md' }).click()])
-  await toolbar.getByRole('button', { name: 'Move to Trash' }).click()
+  await Promise.all([page.waitForEvent('download'), (await noteMore(page, 'Download .md')).click()])
+  await (await noteMore(page, 'Move to Trash')).click()
   await page.getByRole('button', { name: 'Undo' }).click()
-  await toolbar.getByRole('button', { name: 'Move to Trash' }).click()
+  await (await noteMore(page, 'Move to Trash')).click()
   await library(page).getByRole('button', { name: 'More for Trash', exact: true }).click()
   await page.getByRole('menuitem', { name: 'Empty Trash…' }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Empty Trash' }).click()
@@ -91,12 +112,12 @@ test('at phone width, trashing the open note returns to the list', async ({ page
   await page.setViewportSize({ width: 390, height: 844 })
   await page.goto('/')
   await list(page).getByRole('option', { name: /^Groceries/ }).click()
-  await page.getByRole('toolbar', { name: 'Note' }).getByRole('button', { name: 'Move to Trash' }).click()
+  await (await noteMore(page, 'Move to Trash')).click()
   await expect(page.getByRole('region', { name: 'Notes' })).toBeVisible()
   await expect(page.getByRole('main')).toBeHidden()
   await page.getByRole('button', { name: 'Open library' }).click()
   await library(page).getByRole('button', { name: 'Travel', exact: true }).click()
   await list(page).getByRole('option').first().click()
-  await page.getByRole('toolbar', { name: 'Note' }).getByRole('button', { name: 'Move to Trash' }).click()
+  await (await noteMore(page, 'Move to Trash')).click()
   await expect(page.getByRole('region', { name: 'Notes' })).toBeVisible()
 })

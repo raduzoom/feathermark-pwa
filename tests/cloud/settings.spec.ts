@@ -2,6 +2,8 @@
 // against the local Feather Cloud.
 import type { Page } from '@playwright/test'
 import { test, expect } from '../e2e/fixtures'
+import { openTags } from '../e2e/support/tags'
+import { noteMore } from '../e2e/support/note-more'
 import { sha256Hex } from '../../src/core/library/attachments.ts'
 import { RADIATION_SHIELD_PNG_BASE64 } from '../../src/core/library/sample-image.ts'
 import { nodeDevice } from './support/seed'
@@ -152,6 +154,7 @@ async function writeTwoDemoNotes(page: Page) {
   await libraryNav(page).getByRole('button', { name: 'Personal', exact: true }).click()
   await page.keyboard.press('Alt+n')
   await page.keyboard.type('Filed in a sample')
+  await openTags(page)
   await libraryNav(page).getByRole('button', { name: '#ideas', exact: true }).click()
   await page.keyboard.press('Alt+n')
   await page.keyboard.type('Tagged with a sample')
@@ -191,6 +194,7 @@ test('"Add notes" brings the 2 notes written in the demo: at the root and untagg
   await expect(rows(b).filter({ hasText: 'Filed in a sample' })).toHaveCount(1)
   await expect(rows(b).filter({ hasText: 'Tagged with a sample' })).toHaveCount(1)
   await expect(libraryNav(b).getByRole('button', { name: 'Personal', exact: true })).toHaveCount(0)
+  await openTags(b)
   await expect(libraryNav(b).getByRole('button', { name: '#ideas', exact: true })).toHaveCount(0)
   await rows(b).filter({ hasText: 'Filed in a sample' }).click()
   await expect(b.locator('.crumb')).toHaveText('')
@@ -224,6 +228,7 @@ test('the offer comes after the first sync, so a tag the account already has is 
   const named = page.getByRole('dialog', { name: 'New tag' })
   await named.getByRole('textbox', { name: 'Name' }).fill('Work')
   await named.getByRole('button', { name: 'Create', exact: true }).click()
+  await openTags(page)
   await libraryNav(page).getByRole('button', { name: '#Work', exact: true }).click()
   await page.keyboard.press('Alt+n')
   await page.keyboard.type('Tagged by me')
@@ -238,6 +243,7 @@ test('the offer comes after the first sync, so a tag the account already has is 
   })
   await logInFromDemo(page, email)
   const offer = page.getByRole('dialog', { name: 'Add the note you wrote here to your account?' })
+  await openTags(page)
   await expect(libraryNav(page).getByRole('button', { name: '#work', exact: true })).toHaveCount(0)
   await page.waitForTimeout(500)
   await expect(offer).toHaveCount(0)
@@ -307,14 +313,24 @@ test('a note whose body has not arrived says "Loading this note…" and is read-
   await page.keyboard.type('typed over the placeholder')
   await expect(editor).not.toContainText('typed over')
   // nor saved as an empty file
-  const downloadMd = page.getByRole('toolbar', { name: 'Note' }).getByRole('button', { name: 'Download .md' })
-  await expect(downloadMd).toBeDisabled()
+  // the menu item is disabled: neither a click nor Enter downloads, and the menu stays open
+  const downloads: string[] = []
+  page.on('download', (d) => downloads.push(d.suggestedFilename()))
+  const downloadMd = await noteMore(page, 'Download .md')
+  await expect(downloadMd).toHaveAttribute('aria-disabled', 'true')
+  await downloadMd.click()
+  await downloadMd.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('menu', { name: 'More' })).toBeVisible()
+  expect(downloads).toEqual([])
+  await page.keyboard.press('Escape')
 
   release()
   await expect(page.getByText('Loading this note…')).toBeHidden({ timeout: 15_000 })
   await expect(editor).toContainText('written on the Mac')
   await expect(editor).toHaveAttribute('contenteditable', 'true')
-  await expect(downloadMd).toBeEnabled()
+  await expect(await noteMore(page, 'Download .md')).not.toHaveAttribute('aria-disabled', 'true')
+  await page.keyboard.press('Escape')
   await expect(page.getByRole('img', { name: 'Shield' })).toBeVisible({ timeout: 15_000 })
 })
 

@@ -1,4 +1,4 @@
-/* Buttons, menus, dialogs, fields, toasts, the app bar search and the demo line. */
+/* Buttons, menus, dialogs, fields, toasts, the app bar's search button, quick actions and the demo card. */
 .button {
   min-height: var(--h-button-desktop);
   padding: 0 var(--space-16);
@@ -70,6 +70,13 @@
 .menu-item[data-depth='4'] { padding-left: 72px; }
 .menu-item[data-danger='true'] {
   color: var(--c-danger-text);
+}
+.menu-item[aria-disabled='true'] {
+  color: var(--c-action-disabled-on-disabled);
+}
+.menu-item[aria-disabled='true']:hover,
+.menu-item[aria-disabled='true']:focus {
+  background: var(--c-action-disabled);
 }
 .menu-check {
   width: 16px;
@@ -161,50 +168,136 @@
   background: var(--c-danger-banner);
   color: var(--c-danger-text);
 }
-.search {
-  flex: 1 1 240px;
-  max-width: 480px;
+/* The app bar's search button: opens quick actions */
+.search-button {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  height: var(--h-toolbar-desktop);
+  padding: 0 var(--space-8);
+  border-radius: var(--radius-input);
+  box-shadow: inset 0 0 0 1px var(--c-line-hairline);
+  color: var(--c-text-secondary);
+}
+.search-button:hover {
+  background: var(--c-surface-raised);
+  color: var(--c-text-primary);
+}
+.search-button kbd {
+  font-family: inherit;
+  font-size: var(--type-ui-meta-size);
+  font-weight: 600;
+}
+.search-icon {
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+@media (max-width: 639px) {
+  .search-button {
+    height: var(--h-target-ios-min);
+    padding: 0 12px;
+  }
+}
+
+/* Quick actions: a modal dialog near the top of the window */
+.quick-actions {
+  width: min(560px, calc(100vw - 2 * var(--space-16)));
+  max-height: calc(100dvh - 2 * var(--space-64));
+  margin: var(--space-64) auto auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-row);
+  overflow: hidden;
+  background: var(--c-bg-window);
+  color: var(--c-text-primary);
+  box-shadow: 0 24px 64px var(--c-line-hairline), inset 0 0 0 1px var(--c-line-hairline);
+}
+.quick-actions[open] {
+  display: flex;
+  flex-direction: column;
+}
+.quick-actions::backdrop {
+  background: var(--c-text-primary);
+  opacity: 0.2;
+}
+.qa-field {
   display: flex;
   align-items: center;
   gap: var(--space-8);
-  height: var(--h-input);
-  padding: 0 12px;
-  border-radius: 20px;
-  background: var(--c-surface-raised);
+  padding: var(--space-8) var(--space-16);
+  box-shadow: inset 0 -1px 0 var(--c-line-hairline);
+  color: var(--c-text-secondary);
 }
-.search input {
+.qa-field input {
   flex: 1;
   min-width: 0;
+  height: var(--h-button-large);
   border: 0;
   background: transparent;
   color: var(--c-text-primary);
   font: inherit;
   outline: none;
 }
-.search-icon {
-  fill: none;
-  stroke: var(--c-text-secondary);
-  stroke-width: 2;
-  stroke-linecap: round;
+.qa-field input::placeholder {
+  color: var(--c-text-placeholder);
 }
-.search kbd {
-  padding: 2px 6px;
-  border-radius: var(--radius-code);
-  background: var(--c-line-hairline);
+.qa-list {
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-8);
+}
+.qa-head {
+  padding: var(--space-8) var(--space-8) var(--space-4);
+}
+.qa-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-height: var(--h-button-large);
+  padding: 0 var(--space-8);
+  border-radius: var(--radius-input);
+  cursor: default;
+}
+.qa-option:hover {
+  background: var(--c-surface-raised);
+}
+.qa-option[aria-selected='true'] {
+  background: var(--c-accent-tint);
+  color: var(--c-accent-tint-on-tint);
+}
+.qa-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.qa-hint {
+  padding: 0 var(--space-8);
+  border-radius: var(--space-4);
+  box-shadow: inset 0 0 0 1px var(--c-action-outline);
   font-family: inherit;
   font-size: var(--type-ui-meta-size);
-  color: var(--c-text-secondary);
+  font-weight: 600;
+  line-height: 24px;
 }
+
+/* The demo line: a full-width strip under the app bar below 1000 px, a card at the library's foot from 1000 px */
 .demo-line {
-  position: relative;
-  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
   gap: var(--space-8) var(--space-16);
+  width: 100%;
   min-height: 40px;
-  margin: 0 var(--space-16) var(--space-16);
   padding: var(--space-8) var(--space-16);
   border-radius: var(--radius-row);
   background: var(--c-accent-tint);
@@ -214,8 +307,86 @@
 .demo-line p {
   margin: 0;
 }
+@media (min-width: 1000px) {
+  .demo-line {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-8);
+    padding: var(--space-16);
+    background: none;
+    box-shadow: inset 0 0 0 1px var(--c-line-hairline);
+    color: var(--c-text-secondary);
+  }
+  .demo-actions {
+    display: flex;
+    gap: var(--space-16);
+  }
+}
+/* "Get FeatherMark": an outlined button. On hover or keyboard focus it says "Keep what you write" and the arrow moves
+   4 px; both labels share one grid cell, so the width never changes. */
 .demo-link {
-  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  min-height: var(--h-button-desktop);
+  padding: 0 var(--space-16);
+  border-radius: var(--radius-row);
+  box-shadow: inset 0 0 0 1px var(--c-action-outline);
+  color: var(--c-text-primary);
   font-weight: 600;
-  text-underline-offset: 3px;
+  text-decoration: none;
+}
+@media (min-width: 1000px) {
+  .demo-link {
+    min-height: var(--h-button-large);
+  }
+}
+@media (max-width: 639px) {
+  .demo-link {
+    min-height: var(--h-target-ios-min);
+  }
+}
+.demo-link-labels {
+  display: grid;
+}
+.demo-link-labels > span {
+  grid-area: 1 / 1;
+  text-align: center;
+}
+.demo-link-hover {
+  visibility: hidden;
+}
+.demo-link-arrow {
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 160ms ease;
+}
+@media (hover: hover) {
+  .demo-link:hover,
+  .demo-link:focus-visible {
+    background: var(--c-accent-tint);
+    color: var(--c-accent-tint-on-tint);
+  }
+  .demo-link:hover .demo-link-rest,
+  .demo-link:focus-visible .demo-link-rest {
+    visibility: hidden;
+  }
+  .demo-link:hover .demo-link-hover,
+  .demo-link:focus-visible .demo-link-hover {
+    visibility: visible;
+  }
+  .demo-link:hover .demo-link-arrow,
+  .demo-link:focus-visible .demo-link-arrow {
+    transform: translateX(4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .demo-link-arrow {
+    transition: none;
+  }
 }

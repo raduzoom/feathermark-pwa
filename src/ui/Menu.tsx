@@ -4,7 +4,7 @@ import type { ComponentChildren, RefObject } from 'preact'
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 
 export type MenuItem =
-  | { label: string; onSelect?: () => void; kind?: 'item' | 'checkbox' | 'radio'; checked?: boolean; depth?: number; danger?: boolean; submenu?: () => MenuItem[] }
+  | { label: string; onSelect?: () => void; kind?: 'item' | 'checkbox' | 'radio'; checked?: boolean; depth?: number; danger?: boolean; disabled?: boolean; submenu?: () => MenuItem[] }
   | 'separator'
 
 const ROLE = { item: 'menuitem', checkbox: 'menuitemcheckbox', radio: 'menuitemradio' } as const
@@ -75,6 +75,8 @@ export function MenuList({ menuRef, label, items, onClose, onSubmenu, class: cls
   class?: string
 }) {
   const pick = (item: Exclude<MenuItem, 'separator'>) => {
+    // a disabled item can be reached with the arrows but does nothing
+    if (item.disabled) return
     if (item.submenu) return onSubmenu?.(item.submenu)
     if (item.kind !== 'checkbox') onClose(true)
     item.onSelect?.()
@@ -102,10 +104,13 @@ export function MenuList({ menuRef, label, items, onClose, onSubmenu, class: cls
             key={item.label + i}
             role={ROLE[item.kind ?? 'item']}
             aria-checked={item.kind && item.kind !== 'item' ? Boolean(item.checked) : undefined}
+            aria-disabled={item.disabled ? 'true' : undefined}
             tabIndex={-1}
             class="menu-item"
             data-depth={item.depth ?? 0}
             data-danger={item.danger ? 'true' : undefined}
+            // a click leaves the page's selection alone (a selection in the note stays for the next command)
+            onMouseDown={(e) => e.preventDefault()}
             onClick={() => pick(item)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {

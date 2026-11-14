@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs'
 import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
+import { openTags } from './support/tags'
+import { noteMore } from './support/note-more'
 import { downloadedBody } from './support/note-text'
 import { paste } from './support/paste'
 
@@ -60,6 +62,7 @@ test('pin, tags and move change the lists and counts', async ({ page }) => {
   await toolbar(page).getByRole('button', { name: 'Tags' }).click()
   await page.getByRole('menuitemcheckbox', { name: 'ideas' }).click()
   await page.keyboard.press('Escape')
+  await openTags(page)
   await library(page).getByRole('button', { name: '#ideas', exact: true }).click()
   await expect(list(page).getByRole('option')).toHaveCount(1)
 
@@ -71,7 +74,7 @@ test('pin, tags and move change the lists and counts', async ({ page }) => {
 
 test('move to Trash shows Undo, and Undo brings the note back', async ({ page }) => {
   await open(page, 'Bread notes')
-  await toolbar(page).getByRole('button', { name: 'Move to Trash' }).click()
+  await (await noteMore(page, 'Move to Trash')).click()
   await expect(page.getByRole('status')).toContainText('“Bread notes” moved to the Trash.')
   await expect(list(page).getByRole('option', { name: /^Bread notes/ })).toHaveCount(0)
   await page.getByRole('button', { name: 'Undo' }).click()
@@ -105,7 +108,7 @@ test("delete permanently asks first and can't be undone", async ({ page }) => {
 
 test('Download .md saves the note with its front matter', async ({ page }) => {
   await open(page, 'Reading list 2027')
-  const [download] = await Promise.all([page.waitForEvent('download'), toolbar(page).getByRole('button', { name: 'Download .md' }).click()])
+  const [download] = await Promise.all([page.waitForEvent('download'), (await noteMore(page, 'Download .md')).click()])
   expect(download.suggestedFilename()).toBe('Reading list 2027.md')
   const text = readFileSync((await download.path())!, 'utf8')
   expect(text).toMatch(/^---\nfeather_id: [0-9A-Z]{26}\ntitle: Reading list 2027\ncreated: .+Z\nmodified: .+Z\ntags: \[reading\]\npinned: false\n---\n\n- \[ \] \*The Overstory\*/)

@@ -25,3 +25,41 @@ test('text holds 4.5:1 on every panel', () => {
     }
   }
 })
+
+// The web shell redesign (universal/plans/web-shell-redesign.md, Task 6): the pairs it adds.
+const onColour = (key: string, which: string, mode: 'light' | 'dark') => color[key]![`${which}.${mode}`]!
+
+test('the redesign’s text pairs hold 4.5:1', () => {
+  for (const mode of ['light', 'dark'] as const) {
+    const window = value('bg.window', mode)
+    const mint = value('bg.glow.mint', mode)
+    const peach = value('bg.glow.peach', mode)
+    const tint = value('accent.tint', mode)
+    const onTint = onColour('accent.tint', 'onTint', mode)
+    // the one sheet, over the window and over the peach glow now at the bottom right
+    const sheets = [window, peach].map((under) => compositeOver(value('glass.editor', mode), under))
+    const pairs: Array<[string, string, string]> = [
+      // "New note", filled
+      ['New note', onColour('action.primary', 'onPrimary', mode), value('action.primary', mode)],
+      // the library with no panel: straight on the window and on the mint glow (its foot, the demo card, the sync line)
+      ...[window, mint].flatMap((bg): Array<[string, string, string]> => [
+        ['library secondary', value('text.secondary', mode), bg],
+        ['library primary', value('text.primary', mode), bg],
+        ['selected library row', onTint, compositeOver(tint, bg)],
+      ]),
+      ...sheets.flatMap((sheet): Array<[string, string, string]> => [
+        ['sheet secondary', value('text.secondary', mode), sheet],
+        ['sheet on-tint', onTint, sheet],
+        // the selected row: title, preview (body) and meta (secondary) on the tint over the sheet
+        ['selected row title', value('text.primary', mode), compositeOver(tint, sheet)],
+        ['selected row preview', value('text.body', mode), compositeOver(tint, sheet)],
+        ['selected row meta', value('text.secondary', mode), compositeOver(tint, sheet)],
+      ]),
+      // menus and quick actions sit on the window colour; danger items, and the active option on the tint
+      ['menu danger', value('danger.text', mode), window],
+      ['menu danger hovered', value('danger.text', mode), compositeOver(tint, window)],
+      ['active option', onTint, compositeOver(tint, window)],
+    ]
+    for (const [what, text, bg] of pairs) expect(contrastRatio(text, bg), `${mode} ${what}: ${text} on ${bg}`).toBeGreaterThanOrEqual(4.5)
+  }
+})

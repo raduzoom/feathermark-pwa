@@ -4,6 +4,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
+import { noteMore } from './support/note-more'
 import { downloadedBody } from './support/note-text'
 import { newNoteWith, paste } from './support/paste'
 
@@ -20,6 +21,8 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('opening and closing every corpus note changes no byte', async ({ context }) => {
+  // a page and two downloads through the More menu per note: longer than one test's 30 s in WebKit on a busy machine
+  test.setTimeout(90_000)
   for (const name of readdirSync(corpusDir).filter((f) => f.endsWith('.md'))) {
     // a page of its own per note: Chromium blocks a page's 11th download, and each note downloads twice
     const page = await context.newPage()
@@ -83,12 +86,13 @@ test('the inline shortcuts toggle formats', async ({ page }) => {
   await page.keyboard.press('ControlOrMeta+e')
   await page.keyboard.press('ControlOrMeta+k')
   await page.keyboard.type('e.com')
+  await expect(page.getByRole('dialog', { name: 'Quick actions' })).toHaveCount(0)
   expect(await downloadedBody(page)).toBe('[word](e.com)')
-  // in the note list, Ctrl/⌘+K is search
+  // in the note list, Ctrl/⌘+K opens quick actions
   await open(page, 'Groceries')
   await list(page).getByRole('option', { name: /^Groceries/ }).focus()
   await page.keyboard.press('ControlOrMeta+k')
-  await expect(page.getByRole('searchbox', { name: 'Search all notes' })).toBeFocused()
+  await expect(page.getByRole('combobox', { name: 'Search all notes' })).toBeFocused()
 })
 
 test('a checkbox toggles on click', async ({ page }) => {
@@ -121,11 +125,11 @@ test('clicking a link keeps the demo', async ({ page, leaks }) => {
   leaks.allowForeignRequest(/^https:\/\/example\.com\//)
   await page.context().route('https://example.com/**', (r) => r.fulfill({ body: 'ok', contentType: 'text/plain' }))
   await newNoteWith(page, 'Links', 'see [the site](https://example.com/) here\n\nend')
-  await page.getByText('the site').click()
+  await body(page).getByText('the site').click()
   expect(page.url()).toMatch(/^http:\/\/localhost:8431\//)
   await expect(list(page).getByRole('option', { name: /^Links/ })).toHaveCount(1)
   await page.keyboard.press('ControlOrMeta+End')
-  const [popup] = await Promise.all([page.waitForEvent('popup'), page.getByText('the site').click({ modifiers: ['ControlOrMeta'] })])
+  const [popup] = await Promise.all([page.waitForEvent('popup'), body(page).getByText('the site').click({ modifiers: ['ControlOrMeta'] })])
   await expect.poll(() => popup.url()).toBe('https://example.com/')
   await popup.close()
   await expect(list(page).getByRole('option', { name: /^Links/ })).toHaveCount(1)
@@ -145,7 +149,7 @@ test('Markdown shows the raw text', async ({ page }) => {
 
 test('the Trash shows a read-only editor', async ({ page }) => {
   await open(page, 'Groceries')
-  await toolbar(page).getByRole('button', { name: 'Move to Trash' }).click()
+  await (await noteMore(page, 'Move to Trash')).click()
   await page.getByRole('navigation', { name: 'Library' }).getByRole('button', { name: 'Trash', exact: true }).click()
   await open(page, 'Groceries')
   await expect(body(page)).toHaveAttribute('aria-readonly', 'true')

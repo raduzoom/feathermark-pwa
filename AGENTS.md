@@ -212,8 +212,12 @@ FEATHER_LIVE_URL=https://app.feathermark.com FEATHER_ENGINES=chromium,webkit pnp
 ## Styles (when adding a stylesheet or a component)
 
 - Colours only through the variables in `src/ui/tokens.css` (`--c-*`, `--icon-*`); a unit test fails on any colour literal elsewhere. Sizes, spacing and radii also come from it where a token exists.
-- Widths: three columns from 1000 px; the library is a drawer from 640 to 999 px, with "New note" in the bottom bar; one column below 640 px with 44 px targets. Light and dark follow the system.
-- While the drawer is open, everything outside it is `inert`; it closes when the window reaches 1000 px. New content behind the drawer must sit inside one of those inert containers.
+- The shell (`App.tsx`, `shell.css`; design `../universal/design/handoff/screens/web-shell-redesign.dc.html`) is a CSS grid of areas. From 1000 px: a 232 px column of the app bar, the library (no panel, straight on the window) and the side foot (the demo card, or the sync line and account menu), beside the stage, whose one glass sheet (`.panel.sheet`) holds the list and the open note from the top of the window to the bottom. Each piece is rendered once; widths only move it between grid areas, never render it twice.
+- Widths: the library column from 1000 px; the library is a drawer from 640 to 999 px, with "New note" in the bottom bar and the demo card as a strip under the app bar; one column below 640 px with 44 px targets. Light and dark follow the system.
+- While the drawer is open, everything outside it is `inert`: the app bar, the side foot, the stage and the bottom bar. It closes when the window reaches 1000 px. New content behind the drawer must sit inside one of those inert containers.
+- Positioned grid areas paint above the glows (`.glow` is absolute); a new area needs `position: relative` or the mint glow covers it.
+- Quick actions (`QuickActions.tsx`, Ctrl/⌘+K or the app bar's search button) are a modal `<dialog>` holding the "Search all notes" field. They list note titles, so `App.tsx` closes them in the same layout effect as `closeDialogsNotOn` whenever the notes leave the screen (lock, sign-out, an account screen). "This note" is the note open when they opened.
+- The library's Tags section is folded at load; whether it is open lives in a signal in memory only (`LibraryPanel.tsx`), so a reload folds it again. It also shows while a tag is the selected view.
 - Fonts are the system stacks in `--font-serif`, `--font-sans`, `--font-mono`. No web fonts.
 
 ## When `tokens.json` changes

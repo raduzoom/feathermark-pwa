@@ -1,12 +1,10 @@
 // The open note: breadcrumb, toolbar, title, edited line and the Markdown editor.
 import { useLayoutEffect, useRef } from 'preact/hooks'
-import { noteDownload } from '../core/library/export.ts'
-import { zipStored } from '../core/zip.ts'
 import type { Note } from '../core/library/types.ts'
 import type { AppModel } from '../model/app-model.ts'
 import { editedLine } from '../model/format.ts'
 import * as act from './actions.ts'
-import { saveBytes, saveText } from './download.ts'
+import { downloadOpenNote } from './download.ts'
 import { notebookTree } from './LibraryPanel.tsx'
 import { MenuButton } from './Menu.tsx'
 import { NoteEditor } from './NoteEditor.tsx'
@@ -99,59 +97,62 @@ export function EditorPane({ model, onBack }: { model: AppModel; onBack: () => v
 }
 
 function Toolbar({ model, note }: { model: AppModel; note: Note }) {
-  const download = () => {
-    model.flush()
-    const n = model.openNote.value!
-    const tagNames = model.tags.value.filter((t) => n.tagIds.includes(t.id)).map((t) => t.name)
-    const d = noteDownload(n, tagNames, (body) => model.attachmentsOf(body))
-    if (d.kind === 'md') saveText(d.fileName, d.text)
-    else saveBytes(d.fileName, zipStored(d.entries, n.modified), 'application/zip')
-  }
+  // What the note is (pin, tags, notebook), then how it shows, then the rare and destructive actions under More.
   return (
     <div role="toolbar" aria-label="Note" class="toolbar">
-      <button type="button" class="tool" aria-pressed={note.pinned} onClick={() => model.togglePin(note.id)}>
-        Pinned
-      </button>
-      <MenuButton
-        label="Tags"
-        ariaLabel="Tags"
-        class="tool"
-        items={() => [
-          ...model.tags.value.map((t) => ({
-            label: t.name,
-            kind: 'checkbox' as const,
-            checked: (model.openNote.value?.tagIds ?? []).includes(t.id),
-            onSelect: () => model.toggleTag(note.id, t.id),
-          })),
-          'separator',
-          { label: 'New tag…', onSelect: () => act.newTag(model, (id) => model.toggleTag(note.id, id)) },
-        ]}
-      />
-      <MenuButton
-        label="Move"
-        ariaLabel="Move"
-        class="tool"
-        items={() => [
-          { label: 'No notebook', kind: 'radio', checked: note.notebookId === null, onSelect: () => model.move(note.id, null) },
-          ...notebookTree(model.notebooks.value).map(({ nb, depth }) => ({
-            label: nb.name,
-            kind: 'radio' as const,
-            depth,
-            checked: note.notebookId === nb.id,
-            onSelect: () => model.move(note.id, nb.id),
-          })),
-        ]}
-      />
-      <button type="button" class="tool" aria-pressed={model.editorRaw.value} onClick={() => model.toggleRaw()}>
-        Markdown
-      </button>
-      {/* a body that hasn't arrived would be saved as an empty file */}
-      <button type="button" class="tool" disabled={model.openNoteLoading.value} onClick={download}>
-        Download .md
-      </button>
-      <button type="button" class="tool" onClick={() => model.trashWithUndo(note.id)}>
-        Move to Trash
-      </button>
+      <div class="tool-group">
+        <button type="button" class="tool" aria-pressed={note.pinned} onClick={() => model.togglePin(note.id)}>
+          Pinned
+        </button>
+        <MenuButton
+          label="Tags"
+          ariaLabel="Tags"
+          class="tool"
+          items={() => [
+            ...model.tags.value.map((t) => ({
+              label: t.name,
+              kind: 'checkbox' as const,
+              checked: (model.openNote.value?.tagIds ?? []).includes(t.id),
+              onSelect: () => model.toggleTag(note.id, t.id),
+            })),
+            'separator',
+            { label: 'New tag…', onSelect: () => act.newTag(model, (id) => model.toggleTag(note.id, id)) },
+          ]}
+        />
+        <MenuButton
+          label="Move"
+          ariaLabel="Move"
+          class="tool"
+          items={() => [
+            { label: 'No notebook', kind: 'radio', checked: note.notebookId === null, onSelect: () => model.move(note.id, null) },
+            ...notebookTree(model.notebooks.value).map(({ nb, depth }) => ({
+              label: nb.name,
+              kind: 'radio' as const,
+              depth,
+              checked: note.notebookId === nb.id,
+              onSelect: () => model.move(note.id, nb.id),
+            })),
+          ]}
+        />
+      </div>
+      <div class="tool-group">
+        <button type="button" class="tool" aria-pressed={model.editorRaw.value} onClick={() => model.toggleRaw()}>
+          Markdown
+        </button>
+      </div>
+      <div class="tool-group">
+        <MenuButton
+          label="More"
+          ariaLabel="More"
+          class="tool"
+          items={() => [
+            // a body that hasn't arrived would be saved as an empty file
+            { label: 'Download .md', disabled: model.openNoteLoading.value, onSelect: () => downloadOpenNote(model) },
+            'separator',
+            { label: 'Move to Trash', danger: true, onSelect: () => model.trashWithUndo(note.id) },
+          ]}
+        />
+      </div>
     </div>
   )
 }

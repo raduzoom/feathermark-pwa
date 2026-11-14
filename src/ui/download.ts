@@ -1,3 +1,19 @@
+import { noteDownload } from '../core/library/export.ts'
+import { zipStored } from '../core/zip.ts'
+import type { AppModel } from '../model/app-model.ts'
+
+/** Saves the open note as .md, or as a .zip with its attachments (the toolbar's More menu and quick actions). Its
+ *  callers offer it only while the note's body is in (`openNoteLoading` false): else it would save an empty file. */
+export function downloadOpenNote(model: AppModel): void {
+  model.flush()
+  const n = model.openNote.value
+  if (!n) return
+  const tagNames = model.tags.value.filter((t) => n.tagIds.includes(t.id)).map((t) => t.name)
+  const d = noteDownload(n, tagNames, (body) => model.attachmentsOf(body))
+  if (d.kind === 'md') saveText(d.fileName, d.text)
+  else saveBytes(d.fileName, zipStored(d.entries, n.modified), 'application/zip')
+}
+
 /** Saves text as a file through a temporary object URL; nothing leaves the browser. */
 export function saveText(fileName: string, text: string): void {
   saveBlob(fileName, new Blob([text], { type: 'text/markdown;charset=utf-8' }))

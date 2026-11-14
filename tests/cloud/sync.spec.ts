@@ -5,6 +5,7 @@ import { createHash, randomBytes } from 'node:crypto'
 import type { BrowserContext, Page } from '@playwright/test'
 import { test, expect, type Leaks } from '../e2e/fixtures'
 import { paste } from '../e2e/support/paste'
+import { openTags } from '../e2e/support/tags'
 import { deviceName } from '../../src/core/sync/device-name.ts'
 import { seedAccount } from './support/seed'
 import { accountMenu, logIn, newEmail, PASSWORD, signUp, useCloud, writeNote } from './support/server'
@@ -123,6 +124,7 @@ test("a note, a notebook, a tag and an attachment made in A appear in B, and B's
   await a.getByRole('toolbar', { name: 'Note' }).getByRole('button', { name: 'Tags' }).click()
   await a.getByRole('menuitem', { name: 'New tag…' }).click()
   await nameDialog(a, 'New tag', 'outdoors', 'Create')
+  await openTags(a)
   await expect(libraryNav(a).getByRole('button', { name: '#outdoors', exact: true })).toBeVisible()
   const sent = pushed(a)
   await hide(a)
@@ -132,6 +134,7 @@ test("a note, a notebook, a tag and an attachment made in A appear in B, and B's
   const { page: b } = await deviceB(leaks, email)
   await pullUntil(b, () => expect(row(b, 'Seeds')).toHaveCount(1, { timeout: 2_000 }))
   await expect(libraryNav(b).getByRole('button', { name: 'Garden', exact: true })).toBeVisible()
+  await openTags(b)
   await expect(libraryNav(b).getByRole('button', { name: '#outdoors', exact: true })).toBeVisible()
   await libraryNav(b).getByRole('button', { name: 'Garden', exact: true }).click()
   await expect(rows(b)).toHaveCount(1)

@@ -1,4 +1,5 @@
-/* Note list (board web-main: serif heading, rows with a 48 px tile, 16 px radius, 3 px accent bar). */
+/* Note list (universal/design/handoff/screens/web-shell-redesign.dc.html: serif heading, rows without tiles under
+   overline group headings, the selected row in the accent tint). */
 .list-body {
   position: relative; /* the row menu's fallback position */
   display: flex;
@@ -42,12 +43,20 @@
   gap: var(--space-4);
   padding: var(--space-4) var(--space-8) var(--space-16);
 }
-.row {
-  position: relative;
+.row-group {
   display: flex;
-  align-items: center;
-  gap: var(--space-16);
-  padding: var(--space-8) var(--space-8) var(--space-8) var(--space-16);
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.row-group-head {
+  padding: var(--space-8) var(--space-8) var(--space-4);
+}
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+  padding: var(--space-8);
   border-radius: var(--radius-row);
   cursor: default;
 }
@@ -55,57 +64,38 @@
   background: var(--c-surface-raised);
 }
 .row[aria-selected='true'] {
-  background: var(--c-surface-raised);
-}
-.row[aria-selected='true']::after {
-  content: '';
-  position: absolute;
-  left: -2px;
-  top: var(--space-16);
-  bottom: var(--space-16);
-  width: 3px;
-  border-radius: 2px;
-  background: var(--c-accent);
-}
-.row-tile {
-  flex-shrink: 0;
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-thumbnail);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   background: var(--c-accent-tint);
-  font-family: var(--font-serif);
-  font-size: 20px;
-  font-weight: 700;
-}
-.row-tile::before {
-  content: attr(data-letter);
-}
-.row-tile[data-tint='0'] { color: var(--c-notebook-1); }
-.row-tile[data-tint='1'] { color: var(--c-notebook-2); }
-.row-tile[data-tint='2'] { color: var(--c-notebook-3); }
-.row-tile[data-tint='3'] { color: var(--c-notebook-4); }
-.row-text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
 }
 .row-title {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: var(--type-list-title-size);
   line-height: var(--type-list-title-line);
-  font-weight: 700;
+  font-weight: var(--type-list-title-weight);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.row-meta,
+.row-preview,
 .row-snippet {
+  font-size: var(--type-ui-label-size);
+  color: var(--c-text-secondary);
+}
+.row[aria-selected='true'] .row-preview {
+  color: var(--c-text-body);
+}
+.row-preview {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.row-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  min-width: 0;
   font-size: var(--type-ui-meta-size);
   color: var(--c-text-secondary);
+  white-space: nowrap;
 }
 .row-snippet {
   display: -webkit-box;
@@ -113,6 +103,17 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+/* The notebook dot, in the note list and the library (8 px, the notebook colours). */
+.nb-dot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c-notebook-1);
+}
+.nb-dot[data-tint='1'] { background: var(--c-notebook-2); }
+.nb-dot[data-tint='2'] { background: var(--c-notebook-3); }
+.nb-dot[data-tint='3'] { background: var(--c-notebook-4); }
 .row-snippet mark {
   background: var(--c-search-match);
   color: inherit;

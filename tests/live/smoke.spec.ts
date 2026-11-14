@@ -4,6 +4,7 @@
 import { readFileSync } from 'node:fs'
 import { contentSecurityPolicy } from '../../scripts/policy.ts'
 import { test, expect } from '../e2e/fixtures'
+import { noteMore } from '../e2e/support/note-more'
 
 test('the live demo loads, sends the policy, edits and downloads, and leaks nothing', async ({ page }) => {
   const response = await page.goto('/')
@@ -16,7 +17,7 @@ test('the live demo loads, sends the policy, edits and downloads, and leaks noth
   await page.keyboard.type('word')
   await page.keyboard.press('Shift+Home')
   await page.keyboard.press('ControlOrMeta+b')
-  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('toolbar', { name: 'Note' }).getByRole('button', { name: 'Download .md' }).click()])
+  const [download] = await Promise.all([page.waitForEvent('download'), (await noteMore(page, 'Download .md')).click()])
   expect(readFileSync((await download.path())!, 'utf8').endsWith('\n---\n\n**word**')).toBe(true)
 })
 

@@ -21,6 +21,7 @@ import { LibraryPanel } from './LibraryPanel.tsx'
 import { Logo } from './Logo.tsx'
 import { preventFileNavigation } from '../editor/attachments.ts'
 import { NoteList } from './NoteList.tsx'
+import { QuickActions, quickActionsOpen } from './QuickActions.tsx'
 import { ErrorToast, UndoToast } from './Toasts.tsx'
 
 const drawerOpen = signal(false)
@@ -35,7 +36,6 @@ const isMac = /Mac|iPhone|iPad/.test(navigator.platform)
 export function App({ model, demoLibrary }: { model: AppModel; demoLibrary: () => Library }) {
   const menu = useRef<HTMLButtonElement>(null)
   const library = useRef<HTMLElement>(null)
-  const search = useRef<HTMLInputElement>(null)
   const returnFocus = useRef(false)
   const open = drawerOpen.value
   const session = currentSession.value
@@ -70,7 +70,10 @@ export function App({ model, demoLibrary }: { model: AppModel; demoLibrary: () =
   // model's library (setLibrary clears the error and Undo).
   useLayoutEffect(() => {
     closeDialogsNotOn(screen === 'app' ? 'app' : screen === 'unlock' ? 'unlock' : null)
-    if (screen !== 'app') closeSettings()
+    if (screen !== 'app') {
+      closeSettings()
+      quickActionsOpen.value = false
+    }
   }, [screen])
 
   // Signed in (or out) from an account screen, or a screen opened that doesn't apply: back to the notes at "/".
@@ -117,7 +120,7 @@ export function App({ model, demoLibrary }: { model: AppModel; demoLibrary: () =
   // A file dropped outside the note would replace the demo in the tab.
   useLayoutEffect(() => preventFileNavigation(), [])
 
-  // Alt+N new note (browsers keep Ctrl/⌘+N), Ctrl/⌘+K search. A layout effect, so the keys work from the first
+  // Alt+N new note (browsers keep Ctrl/⌘+N), Ctrl/⌘+K quick actions. A layout effect, so the keys work from the first
   // paint: a plain effect can run after the page has loaded and miss the first key press.
   useLayoutEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -129,7 +132,7 @@ export function App({ model, demoLibrary }: { model: AppModel; demoLibrary: () =
       } else if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key.toLowerCase() === 'k' && !e.defaultPrevented) {
         // the note body takes Ctrl/⌘+K for a link and marks the event handled
         e.preventDefault()
-        search.current?.focus()
+        quickActionsOpen.value = true
       }
     }
     document.addEventListener('keydown', onKey)
@@ -182,9 +185,13 @@ export function App({ model, demoLibrary }: { model: AppModel; demoLibrary: () =
   if (screen === 'login') return <LogIn flow={signIn!} />
   if (screen === 'create') return <CreateAccount flow={onboarding!} />
 
-  // While the drawer is open, everything behind the scrim is out of reach for keyboard and screen reader.
+  const unlocked = session !== null && account.kind === 'unlocked'
+  const openFromList = () => (phoneOpenId.value = model.openNote.value?.id ?? null)
+
+  // One instance of each piece; CSS grid areas place them by width (shell.css). While the drawer is open, everything
+  // outside it (app bar, side foot, stage, bottom bar) is inert: out of reach for keyboard and screen reader.
   return (
-    <div class="page" data-phone-note={phoneNote ? 'true' : 'false'}>
+    <div class="page" data-phone-note={phoneNote ? 'true' : 'false'} data-demo={account.kind === 'demo' ? 'true' : 'false'}>
       <div class="glow glow-mint" aria-hidden="true" />
       <div class="glow glow-peach" aria-hidden="true" />
 
@@ -206,78 +213,75 @@ export function App({ model, demoLibrary }: { model: AppModel; demoLibrary: () =
           <Logo size={28} />
           FeatherMark
         </h1>
-        <label class="search">
-          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" class="search-icon">
-            <path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14z M21 21l-5-5" />
+        <button type="button" class="search-button" aria-label="Search and quick actions" onClick={() => (quickActionsOpen.value = true)}>
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" class="search-icon">
+            <circle cx="7" cy="7" r="4.5" />
+            <path d="m10.5 10.5 3 3" />
           </svg>
-          <input
-            ref={search}
-            type="search"
-            aria-label="Search all notes"
-            placeholder="Search all notes"
-            value={model.searchText.value}
-            onInput={(e) => model.searchAll(e.currentTarget.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape') {
-                model.setSearch('')
-                e.currentTarget.blur()
-              }
-            }}
-          />
-          <kbd>{isMac ? '⌘ K' : 'Ctrl K'}</kbd>
-        </label>
-        {session && account.kind === 'unlocked' && <SyncLine session={session} />}
-        {session && account.kind === 'unlocked' && <AccountMenu session={session} />}
+          <kbd>{isMac ? '⌘K' : 'Ctrl K'}</kbd>
+        </button>
       </header>
 
-      {account.kind === 'demo' && (
-        <div class="demo-line" inert={open}>
-          <p>This is a demo. Notes here aren't saved.</p>
-          {accounts ? (
-            <span class="demo-actions">
-              <button type="button" class="link-button" onClick={() => navigate('/login')}>
-                Log in
-              </button>
-              <button type="button" class="link-button" onClick={() => navigate('/login?create')}>
-                Create account
-              </button>
-            </span>
-          ) : (
-            <a class="demo-link" href="https://feathermark.com/download" target="_blank" rel="noopener noreferrer">
-              Get FeatherMark
-            </a>
-          )}
+      {open && <div class="scrim" aria-hidden="true" onClick={() => close(true)} />}
+      <nav id="library" ref={library} tabIndex={-1} aria-label="Library" class="library" data-open={open}>
+        <LibraryPanel
+          model={model}
+          onNavigate={() => {
+            phoneOpenId.value = null
+            if (!matchMedia(DESKTOP).matches) close(false)
+          }}
+        />
+      </nav>
+
+      <div class="side-foot" inert={open}>
+        {account.kind === 'demo' && (
+          <div class="demo-line">
+            <p>This is a demo. Notes here aren't saved.</p>
+            {accounts ? (
+              <span class="demo-actions">
+                <button type="button" class="link-button" onClick={() => navigate('/login')}>
+                  Log in
+                </button>
+                <button type="button" class="link-button" onClick={() => navigate('/login?create')}>
+                  Create account
+                </button>
+              </span>
+            ) : (
+              // the hover label swaps in CSS; the name stays "Get FeatherMark"
+              <a class="demo-link" aria-label="Get FeatherMark" href="https://feathermark.com/download" target="_blank" rel="noopener noreferrer">
+                <span class="demo-link-labels" aria-hidden="true">
+                  <span class="demo-link-rest">Get FeatherMark</span>
+                  <span class="demo-link-hover">Keep what you write</span>
+                </span>
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" class="demo-link-arrow">
+                  <path d="M3 8h10M9 4l4 4-4 4" />
+                </svg>
+              </a>
+            )}
+          </div>
+        )}
+        {unlocked && <SyncLine session={session} />}
+        {unlocked && <AccountMenu session={session} />}
+      </div>
+
+      <div class="stage" inert={open}>
+        {unlocked && session.tab.value === 'lost' && (
+          <div class="tab-line" role="status">
+            <p>FeatherMark is now open in another tab.</p>
+            <button type="button" class="button button-primary" onClick={() => void session.takeOver().catch((e: unknown) => model.showError(session.message(e)))}>
+              Use it here
+            </button>
+          </div>
+        )}
+        {unlocked && <OfflineBanner session={session} />}
+        <div class="panel sheet">
+          <section aria-label="Notes" class="notes">
+            <NoteList model={model} onOpen={openFromList} onEnter={() => document.getElementById('note-body')?.focus()} />
+          </section>
+          <main class="editor">
+            <EditorPane model={model} onBack={() => (phoneOpenId.value = null)} />
+          </main>
         </div>
-      )}
-
-      {session && account.kind === 'unlocked' && session.tab.value === 'lost' && (
-        <div class="tab-line" role="status" inert={open}>
-          <p>FeatherMark is now open in another tab.</p>
-          <button type="button" class="button button-primary" onClick={() => void session.takeOver().catch((e: unknown) => model.showError(session.message(e)))}>
-            Use it here
-          </button>
-        </div>
-      )}
-
-      {session && account.kind === 'unlocked' && <OfflineBanner session={session} inert={open} />}
-
-      <div class="columns">
-        {open && <div class="scrim" aria-hidden="true" onClick={() => close(true)} />}
-        <nav id="library" ref={library} tabIndex={-1} aria-label="Library" class="panel library" data-open={open}>
-          <LibraryPanel
-            model={model}
-            onNavigate={() => {
-              phoneOpenId.value = null
-              if (!matchMedia(DESKTOP).matches) close(false)
-            }}
-          />
-        </nav>
-        <section aria-label="Notes" class="panel notes" inert={open}>
-          <NoteList model={model} onOpen={() => (phoneOpenId.value = model.openNote.value?.id ?? null)} onEnter={() => document.getElementById('note-body')?.focus()} />
-        </section>
-        <main class="panel editor" inert={open}>
-          <EditorPane model={model} onBack={() => (phoneOpenId.value = null)} />
-        </main>
       </div>
 
       <div class="bottombar" inert={open}>
@@ -288,8 +292,9 @@ export function App({ model, demoLibrary }: { model: AppModel; demoLibrary: () =
 
       <UndoToast model={model} />
       <ErrorToast model={model} />
-      {session && account.kind === 'unlocked' && session.tab.value === 'here' && <SettingsSync session={session} model={model} />}
-      {session && account.kind === 'unlocked' && session.tab.value === 'here' && <DemoNotesOffer session={session} />}
+      {unlocked && session.tab.value === 'here' && <SettingsSync session={session} model={model} />}
+      {unlocked && session.tab.value === 'here' && <DemoNotesOffer session={session} />}
+      <QuickActions model={model} newNote={newNote} openNote={openFromList} />
       <DialogHost />
     </div>
   )
@@ -297,10 +302,10 @@ export function App({ model, demoLibrary }: { model: AppModel; demoLibrary: () =
 
 /** "Keep" off and offline: what is typed lives only in this tab (web design "The accepted limit of Keep off"). Its own
  *  component, so the sync status, which changes with every body that arrives, redraws only this, never the app. */
-function OfflineBanner({ session, inert }: { session: SessionModel; inert: boolean }) {
+function OfflineBanner({ session }: { session: SessionModel }) {
   if (session.keep.value || session.status.value.kind !== 'offline') return null
   return (
-    <div class="tab-line offline-line" role="status" inert={inert}>
+    <div class="tab-line offline-line" role="status">
       <p>You're offline. Changes are only in this tab until the connection is back.</p>
     </div>
   )

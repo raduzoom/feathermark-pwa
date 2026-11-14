@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import type { Page } from '@playwright/test'
 import { RADIATION_SHIELD_PNG_BASE64 } from '../../src/core/library/sample-image.ts'
 import { test, expect } from './fixtures'
+import { noteMore } from './support/note-more'
 import { newNoteWith, paste } from './support/paste'
 
 const list = (page: Page) => page.getByRole('listbox', { name: 'Notes' })
@@ -79,7 +80,7 @@ test('clicking a chip downloads the file', async ({ page }) => {
 
 test('a note with an image downloads as a zip', async ({ page }) => {
   await open(page, 'Weather station build')
-  const [download] = await Promise.all([page.waitForEvent('download'), page.getByRole('toolbar', { name: 'Note' }).getByRole('button', { name: 'Download .md' }).click()])
+  const [download] = await Promise.all([page.waitForEvent('download'), (await noteMore(page, 'Download .md')).click()])
   expect(download.suggestedFilename()).toBe('Weather station build.zip')
   const zip = readFileSync((await download.path())!)
   const text = zip.toString('latin1')

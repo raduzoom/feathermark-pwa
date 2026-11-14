@@ -1,13 +1,29 @@
-/* The page shell: app bar, three glass panels, the drawer and the bottom bar.
-   Widths: three columns from 1000 px; a drawer library from 640 to 999 px; one column below 640 px. */
+/* The page shell (universal/design/handoff/screens/web-shell-redesign.dc.html): app bar, library, side foot and one
+   glass sheet holding the list and the note, placed by CSS grid areas; the drawer and the bottom bar below 1000 px.
+   Widths: library column from 1000 px; a drawer library from 640 to 999 px; one column below 640 px. */
 
 .page {
   position: relative;
   height: 100dvh;
   min-height: 640px;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  /* below 1000 px: the app bar row (account pieces at its right), the stage, the bottom bar */
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'appbar foot'
+    'stage stage'
+    'bottom bottom';
+}
+/* the demo card is a full-width row under the app bar */
+.page[data-demo='true'] {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'appbar appbar'
+    'foot foot'
+    'stage stage'
+    'bottom bottom';
 }
 
 .glow {
@@ -23,19 +39,21 @@
   background: var(--c-bg-glow-mint);
   filter: blur(80px);
 }
+/* bottom right: behind the editor it turned the glass brown in dark mode */
 .glow-peach {
   right: -10%;
-  top: 20%;
+  bottom: -25%;
   width: 45%;
-  height: 70%;
+  height: 60%;
   background: var(--c-bg-glow-peach);
   filter: blur(88px);
 }
 
 /* App bar */
 .appbar {
+  grid-area: appbar;
   position: relative;
-  flex-shrink: 0;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: var(--space-16);
@@ -50,6 +68,7 @@
   font-family: var(--font-serif);
   font-size: 18px;
   font-weight: 700;
+  white-space: nowrap;
 }
 .menu-button {
   display: none;
@@ -66,60 +85,98 @@
   stroke-linecap: round;
 }
 
-/* Panels */
-.columns {
+/* The side foot: the demo card, or the sync line and account menu */
+.side-foot {
+  grid-area: foot;
   position: relative;
-  flex-grow: 1;
-  min-height: 0;
+  min-width: 0;
   display: flex;
+  align-items: center;
+  gap: var(--space-16);
+  padding: 0 var(--space-16) 0 0;
+}
+.page[data-demo='true'] .side-foot {
+  padding: 0 var(--space-16) var(--space-16);
+}
+
+/* The stage: the "open in another tab" and offline lines, then the sheet */
+.stage {
+  grid-area: stage;
+  position: relative;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
   gap: var(--space-16);
   padding: 0 var(--space-16) var(--space-16);
 }
 .panel {
   display: flex;
-  flex-direction: column;
   min-width: 0;
   overflow: hidden;
   border-radius: var(--radius-panel);
   box-shadow: inset 0 0 0 1px var(--c-line-hairline);
 }
-.library {
-  flex: 0 0 232px;
-  background: var(--c-glass-sidebar);
-  -webkit-backdrop-filter: blur(28px);
-  backdrop-filter: blur(28px);
-}
-.library:focus {
-  outline: none;
-}
-.notes {
-  flex: 1 1 280px;
-  max-width: 340px;
-  background: var(--c-glass-list);
-  -webkit-backdrop-filter: blur(28px);
-  backdrop-filter: blur(28px);
-}
-.editor {
-  flex: 999 1 480px;
+/* One glass sheet: the list and the open note */
+.sheet {
+  flex: 1;
+  min-height: 0;
   background: var(--c-glass-editor);
   -webkit-backdrop-filter: blur(30px);
   backdrop-filter: blur(30px);
 }
-
-.library-top {
-  padding: var(--space-16);
+.notes {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 280px;
+  max-width: 340px;
+  box-shadow: inset -1px 0 0 var(--c-line-hairline);
 }
+.editor {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 999 1 480px;
+}
+
+/* The library: a column on the window from 1000 px (no panel), a drawer below */
+.library {
+  grid-area: library;
+  /* positioned, so it paints above the glows like the other areas */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.library:focus {
+  outline: none;
+}
+.library-top {
+  padding: var(--space-16) var(--space-8);
+}
+/* The library's "New note": the screen's one filled button on the web (universal/AGENTS.md "Visual design"). */
 .new-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
   width: 100%;
   height: var(--h-button-large);
   border-radius: var(--radius-row);
-  background: var(--c-surface-raised);
-  box-shadow: inset 0 0 0 1px var(--c-line-hairline);
+  background: var(--c-action-primary);
+  color: var(--c-action-primary-on-primary);
   font-weight: 600;
+}
+.new-note .lib-icon {
+  stroke-width: 2;
 }
 
 /* Bottom bar (below 1000 px) */
 .bottombar {
+  grid-area: bottom;
   display: none;
   position: relative;
   justify-content: flex-end;
@@ -132,6 +189,52 @@
   background: var(--c-action-primary);
   color: var(--c-action-primary-on-primary);
   font-weight: 600;
+}
+
+/* Desktop: the library column, its foot under it, and the sheet from the top of the window to the bottom */
+@media (min-width: 1000px) {
+  .page,
+  .page[data-demo='true'] {
+    grid-template-columns: 232px minmax(0, 1fr);
+    grid-template-rows: 56px minmax(0, 1fr) auto;
+    grid-template-areas:
+      'appbar stage'
+      'library stage'
+      'foot stage';
+    column-gap: var(--space-16);
+    padding: var(--space-16) 0 var(--space-16) var(--space-16);
+  }
+  .appbar {
+    gap: var(--space-8);
+    height: 56px;
+    padding: 0 var(--space-8);
+  }
+  .appbar .brand {
+    flex-grow: 1;
+  }
+  .stage {
+    padding: 0 var(--space-16) 0 0;
+  }
+  .side-foot,
+  .page[data-demo='true'] .side-foot {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-8);
+    padding: var(--space-16) var(--space-8) 0;
+  }
+  .side-foot .sync-line {
+    margin: 0;
+  }
+  /* the account menu opens upwards from the foot */
+  .side-foot .menu {
+    top: auto;
+    bottom: calc(100% + var(--space-4));
+    left: 0;
+    right: auto;
+  }
+  .side-foot .account-menu-trigger {
+    max-width: 100%;
+  }
 }
 
 /* Tablet: the library is a drawer */
@@ -157,7 +260,11 @@
     left: var(--space-16);
     width: 280px;
     max-width: calc(100vw - 2 * var(--space-16));
+    border-radius: var(--radius-panel);
+    box-shadow: inset 0 0 0 1px var(--c-line-hairline);
     background: var(--c-glass-editor);
+    -webkit-backdrop-filter: blur(28px);
+    backdrop-filter: blur(28px);
     transform: translateX(calc(-100% - var(--space-24)));
     visibility: hidden;
     transition: transform 200ms ease, visibility 0s linear 200ms;
@@ -170,6 +277,9 @@
   .library .new-note {
     display: none;
   }
+  .appbar .search-button {
+    margin-left: auto;
+  }
 }
 
 /* Phone: one column. The list is the start screen; an opened note shows full width with Back. */
@@ -177,6 +287,7 @@
   .notes {
     flex: 1 1 auto;
     max-width: none;
+    box-shadow: none;
   }
   .editor {
     display: none;
@@ -191,9 +302,6 @@
   .page[data-phone-note='true'] .back-button {
     display: inline-flex;
     align-items: center;
-  }
-  .appbar .search {
-    display: none;
   }
   .editor-head,
   .editor-scroll,
@@ -213,16 +321,18 @@
   }
 }
 
-/* No blur: opaque panels */
+/* No blur: opaque sheet and drawer */
 @media (prefers-reduced-transparency: reduce) {
-  .panel {
+  .panel,
+  .library[data-open='true'] {
     background: var(--c-bg-window);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
   }
 }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .panel {
+  .panel,
+  .library[data-open='true'] {
     background: var(--c-bg-window);
   }
 }

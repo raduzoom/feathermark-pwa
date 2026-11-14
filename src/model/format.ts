@@ -57,6 +57,15 @@ export function noteMeta(s: Pick<NoteSummary, 'modified'>, notebookName: string 
   return notebookName ? `${when} · ${notebookName}` : when
 }
 
+/** The heading a list row sits under (data-model.md "List groups (web)"). `pinnedFirst`: the view puts pinned notes
+ *  first (All, a notebook, a tag). Uses the kept formatters only, so it adds no formatter per row. */
+export type RowGroup = 'Pinned' | 'Today' | 'Yesterday' | 'Earlier'
+export function rowGroup(s: Pick<NoteSummary, 'modified' | 'pinned'>, pinnedFirst: boolean, now: number, o: FormatOpts = {}): RowGroup {
+  if (pinnedFirst && s.pinned) return 'Pinned'
+  if (sameDay(s.modified, now, o)) return 'Today'
+  return yesterday(s.modified, now, o) ? 'Yesterday' : 'Earlier'
+}
+
 /** "Groceries, pinned, Today, 08:15, Personal": a note row's accessible name. */
 export function rowLabel(s: NoteSummary, notebookName: string | null, now: number, o: FormatOpts = {}): string {
   const parts = [displayTitle(s.title)]

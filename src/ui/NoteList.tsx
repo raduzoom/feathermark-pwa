@@ -1,21 +1,12 @@
-// The note list: heading, the in-view search field, the scope chip, and a listbox of rows (or an empty state).
+// The note list: heading, the in-view search field, the scope chip, and a listbox of rows under group headings (or an
+// empty state).
 import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import type { AppModel, Row } from '../model/app-model.ts'
-import { noteMeta, rowLabel, trashMeta } from '../model/format.ts'
+import { listDate, rowGroup, rowLabel, trashMeta, type RowGroup } from '../model/format.ts'
 import * as act from './actions.ts'
 import { firstItem, MenuList, type MenuItem } from './Menu.tsx'
-
-const TINTS = 4
-function tint(id: string): number {
-  let h = 0
-  for (const ch of id) h = (h * 31 + ch.codePointAt(0)!) % 1_000_003
-  return h % TINTS
-}
-function letter(title: string): string {
-  const first = [...title.trim()][0]
-  return first ? first.toUpperCase() : '·'
-}
+import { notebookInfo } from './notebook-tint.ts'
 
 function Snippet({ row }: { row: Row }) {
   if (row.snippet === null) return null
@@ -36,8 +27,20 @@ export function NoteList({ model, onOpen, onEnter }: { model: AppModel; onOpen: 
   const empty = model.emptyState.value
   const searching = model.searchText.value.trim() !== ''
   const now = model.now()
-  const notebookName = (id: string | null) => (id ? (model.notebooks.value.find((n) => n.id === id)?.name ?? null) : null)
+  const notebooks = notebookInfo(model.notebooks.value)
+  const notebookName = (id: string | null) => (id ? (notebooks.get(id)?.name ?? null) : null)
   const scopeName = notebookName(model.searchNotebookId.value)
+  // data-model.md "List groups (web)": headings outside search and the Trash; pinned first where the view sorts so
+  const view = model.selection.value.kind
+  const grouped = !searching && view !== 'trash'
+  const pinnedFirst = view === 'all' || view === 'notebook' || view === 'tag'
+  const runs: Array<{ group: RowGroup | null; rows: Array<{ row: Row; i: number }> }> = []
+  rows.forEach((row, i) => {
+    const group = grouped ? rowGroup(row.note, pinnedFirst, now) : null
+    const last = runs[runs.length - 1]
+    if (last && last.group === group) last.rows.push({ row, i })
+    else runs.push({ group, rows: [{ row, i }] })
+  })
 
   // Focus moves at once: the row already exists, and waiting a frame let fast key presses land on the old row.
   const focusRow = (id: string) => list.current?.querySelector<HTMLElement>(`[data-id="${id}"]`)?.focus()
@@ -124,32 +127,55 @@ export function NoteList({ model, onOpen, onEnter }: { model: AppModel; onOpen: 
         <EmptyList model={model} />
       ) : (
         <div ref={list} role="listbox" aria-label="Notes" class="rows">
-          {rows.map((row, i) => {
-            const n = row.note
-            const nb = notebookName(n.notebookId)
-            const selected = n.id === openId
-            return (
-              <div
-                key={n.id}
-                role="option"
-                data-id={n.id}
-                aria-selected={selected}
-                aria-label={rowLabel(n, nb, now)}
-                tabIndex={selected || (i === 0 && !rows.some((r) => r.note.id === openId)) ? 0 : -1}
-                class={n.id === menuFor ? 'row row-menu-open' : 'row'}
-                onClick={() => choose(n.id, false)}
-                onContextMenu={(e) => {
-                  e.preventDefault()
-                  setMenuFor(n.id)
-                }}
-                onKeyDown={(e) => onKey(e, row, i)}
-              >
-                <span class="row-tile" data-tint={tint(n.id)} data-letter={letter(n.title)} aria-hidden="true" />
-                <span class="row-text">
+          {runs.map((run) => {
+            const items = run.rows.map(({ row, i }) => {
+              const n = row.note
+              const nb = n.notebookId ? (notebooks.get(n.notebookId) ?? null) : null
+              const selected = n.id === openId
+              return (
+                <div
+                  key={n.id}
+                  role="option"
+                  data-id={n.id}
+                  aria-selected={selected}
+                  aria-label={rowLabel(n, nb?.name ?? null, now)}
+                  tabIndex={selected || (i === 0 && !rows.some((r) => r.note.id === openId)) ? 0 : -1}
+                  class={n.id === menuFor ? 'row row-menu-open' : 'row'}
+                  onClick={() => choose(n.id, false)}
+                  onContextMenu={(e) => {
+                    e.preventDefault()
+                    setMenuFor(n.id)
+                  }}
+                  onKeyDown={(e) => onKey(e, row, i)}
+                >
                   <span class="row-title">{n.title.trim() === '' ? 'Untitled' : n.title}</span>
-                  <span class="row-meta">{n.trashedAt !== null ? trashMeta(n.trashedAt, 30, now) : noteMeta(n, nb, now)}</span>
-                  <Snippet row={row} />
-                </span>
+                  {row.snippet !== null ? <Snippet row={row} /> : n.preview !== '' && <span class="row-preview">{n.preview}</span>}
+                  <span class="row-meta">
+                    {n.trashedAt !== null ? (
+                      trashMeta(n.trashedAt, 30, now)
+                    ) : (
+                      <>
+                        {listDate(n.modified, now)}
+                        {nb && (
+                          <>
+                            <span class="nb-dot" data-tint={nb.tint} aria-hidden="true" />
+                            {nb.name}
+                          </>
+                        )}
+                      </>
+                    )}
+                  </span>
+                </div>
+              )
+            })
+            if (run.group === null) return items
+            const id = `row-group-${run.group.toLowerCase()}`
+            return (
+              <div role="group" aria-labelledby={id} class="row-group" key={id}>
+                <div id={id} class="overline row-group-head">
+                  {run.group}
+                </div>
+                {items}
               </div>
             )
           })}

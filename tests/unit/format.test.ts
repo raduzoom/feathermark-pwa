@@ -9,6 +9,7 @@ import {
   errorMessage,
   listDate,
   noteMeta,
+  rowGroup,
   trashMeta,
 } from '../../src/model/format.ts'
 
@@ -66,4 +67,28 @@ test('errors use the Apple wording', () => {
   expect(errorMessage(new LibraryError('invalidName'))).toBe("Names can't be empty.")
   expect(errorMessage(new LibraryError('notFound'))).toBe('That item no longer exists.')
   expect(errorMessage(new Error('boom'))).toBe('Something went wrong: boom')
+})
+
+test('rowGroup: pinned first only where the view puts pinned notes first', () => {
+  expect(rowGroup({ modified: at(12), pinned: true }, true, now, opts)).toBe('Pinned')
+  expect(rowGroup({ modified: at(12), pinned: true }, false, now, opts)).toBe('Today')
+  expect(rowGroup({ modified: at(7), pinned: true }, false, now, opts)).toBe('Earlier')
+})
+
+test('rowGroup: Today, Yesterday and Earlier by the day of modified', () => {
+  expect(rowGroup({ modified: at(12), pinned: false }, true, now, opts)).toBe('Today')
+  expect(rowGroup({ modified: at(11), pinned: false }, true, now, opts)).toBe('Yesterday')
+  expect(rowGroup({ modified: at(10), pinned: false }, true, now, opts)).toBe('Earlier')
+  expect(rowGroup({ modified: at(12, 10, 42, 2025), pinned: false }, true, now, opts)).toBe('Earlier')
+})
+
+test('rowGroup: the edges are local midnights', () => {
+  expect(rowGroup({ modified: Date.UTC(2026, 10, 12, 0, 0), pinned: false }, true, now, opts)).toBe('Today')
+  expect(rowGroup({ modified: Date.UTC(2026, 10, 11, 23, 59, 59, 999), pinned: false }, true, now, opts)).toBe('Yesterday')
+  expect(rowGroup({ modified: Date.UTC(2026, 10, 11, 0, 0), pinned: false }, true, now, opts)).toBe('Yesterday')
+  expect(rowGroup({ modified: Date.UTC(2026, 10, 10, 23, 59, 59, 999), pinned: false }, true, now, opts)).toBe('Earlier')
+  // in Tokyo (UTC+9) now is 00:00 on 13 Nov, so 12 Nov 15:00 UTC is today there and 12 Nov 14:59 UTC yesterday
+  const tokyo = { locale: 'en-GB', timeZone: 'Asia/Tokyo' }
+  expect(rowGroup({ modified: now, pinned: false }, true, now, tokyo)).toBe('Today')
+  expect(rowGroup({ modified: now - 60_000, pinned: false }, true, now, tokyo)).toBe('Yesterday')
 })

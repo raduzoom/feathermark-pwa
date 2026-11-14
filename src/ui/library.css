@@ -1,4 +1,5 @@
-/* Library column: views, notebook tree and tags (board web-main: rows 36 px, 8 px radius, overline headings). */
+/* Library column: views, notebook tree, folding tags and Trash at the foot (universal/design/handoff/screens/
+   web-shell-redesign.dc.html; rows stay 36 px, 8 px radius, overline headings). */
 .library-body {
   display: flex;
   flex-direction: column;
@@ -9,7 +10,32 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   padding: 0 var(--space-8) var(--space-16);
+}
+/* Trash alone at the foot of the scroll area */
+.lib-list.lib-foot {
+  margin-top: auto;
+  padding-top: var(--space-16);
+}
+.lib-icon {
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.lib-row .lib-icon {
+  color: var(--c-text-secondary);
+}
+.lib-row[aria-current='page'] .lib-icon {
+  color: inherit;
+}
+/* the top-level notebook's dot, in a 16 px slot so names line up with the views' icons */
+.lib-dot {
+  margin: 0 var(--space-4);
 }
 .lib-list {
   list-style: none;
@@ -28,16 +54,17 @@
   align-items: center;
   gap: var(--space-8);
   height: 36px;
-  padding: 0 var(--space-32) 0 12px;
+  padding: 0 var(--space-32) 0 var(--space-8);
   border-radius: var(--radius-input);
   text-align: left;
 }
-.lib-item[data-depth='1'] .lib-row { padding-left: 28px; }
-.lib-item[data-depth='2'] .lib-row { padding-left: 44px; }
-.lib-item[data-depth='3'] .lib-row { padding-left: 60px; }
-.lib-item[data-depth='4'] .lib-row { padding-left: 76px; }
-.lib-item[data-depth='5'] .lib-row { padding-left: 92px; }
-.lib-item[data-depth='6'] .lib-row { padding-left: 108px; }
+/* sub-notebooks: each level's name starts under its parent's name (8 + 16 + 8 px, then 16 px a level) */
+.lib-item[data-depth='1'] .lib-row { padding-left: 32px; }
+.lib-item[data-depth='2'] .lib-row { padding-left: 48px; }
+.lib-item[data-depth='3'] .lib-row { padding-left: 64px; }
+.lib-item[data-depth='4'] .lib-row { padding-left: 80px; }
+.lib-item[data-depth='5'] .lib-row { padding-left: 96px; }
+.lib-item[data-depth='6'] .lib-row { padding-left: 112px; }
 .lib-row:hover {
   background: var(--c-surface-raised);
 }
@@ -96,7 +123,41 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: var(--space-16) var(--space-4) var(--space-4) 12px;
+  gap: var(--space-4);
+  margin: var(--space-16) var(--space-4) var(--space-4) var(--space-8);
+}
+.lib-section-tags {
+  margin-left: 0;
+}
+/* the Tags heading is a button: name, count, chevron (turned down while open) */
+.lib-fold {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  height: 28px;
+  padding: 0 var(--space-8);
+  border-radius: var(--radius-input);
+}
+.lib-fold .overline {
+  flex: 1;
+  text-align: left;
+}
+.lib-fold:hover {
+  background: var(--c-surface-raised);
+}
+.lib-chevron {
+  color: var(--c-text-secondary);
+  transition: transform 160ms ease;
+}
+.lib-fold[aria-expanded='true'] .lib-chevron {
+  transform: rotate(90deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .lib-chevron {
+    transition: none;
+  }
 }
 .overline {
   margin: 0;

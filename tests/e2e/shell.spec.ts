@@ -20,8 +20,34 @@ test('three columns at desktop width', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Open library' })).toHaveCount(0)
   expect((await library(page).boundingBox())!.width).toBe(232)
   expect((await page.getByRole('banner').boundingBox())!.height).toBe(56)
-  expect((await notes(page).boundingBox())!.width).toBeLessThanOrEqual(340)
-  expect(await library(page).evaluate((el) => getComputedStyle(el).borderTopLeftRadius)).toBe('24px')
+  const lib = (await library(page).boundingBox())!
+  const list = (await notes(page).boundingBox())!
+  const editor = (await page.getByRole('main').boundingBox())!
+  expect(list.width).toBeLessThanOrEqual(340)
+  // side by side: the library, then the list, then the note
+  expect(lib.x + lib.width).toBeLessThanOrEqual(list.x)
+  expect(list.x + list.width).toBeLessThanOrEqual(editor.x + 1)
+  // the list and the note share one glass sheet; the library sits on the window with no panel
+  const sheet = notes(page).locator('xpath=..')
+  expect(await sheet.evaluate((el) => el.contains(document.querySelector('main')))).toBe(true)
+  expect(await sheet.evaluate((el) => getComputedStyle(el).borderTopLeftRadius)).toBe('24px')
+  expect(await library(page).evaluate((el) => getComputedStyle(el).backgroundColor)).toBe('rgba(0, 0, 0, 0)')
+})
+
+test('the sheet reaches up to the top of the window at 1440 px', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/')
+  const sheet = (await notes(page).locator('xpath=..').boundingBox())!
+  expect(sheet.y).toBeLessThanOrEqual(16)
+})
+
+test('at phone width the search button fits beside the brand', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/')
+  const button = (await page.getByRole('button', { name: 'Search and quick actions' }).boundingBox())!
+  const bar = (await page.getByRole('banner').boundingBox())!
+  expect(button.height).toBeGreaterThanOrEqual(44)
+  expect(button.x + button.width).toBeLessThanOrEqual(bar.x + bar.width)
 })
 
 test('the library is a drawer at tablet width', async ({ page }) => {
