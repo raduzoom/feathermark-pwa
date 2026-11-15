@@ -29,7 +29,9 @@ export function NoteList({ model, onOpen, onEnter }: { model: AppModel; onOpen: 
   const now = model.now()
   const notebooks = notebookInfo(model.notebooks.value)
   const notebookName = (id: string | null) => (id ? (notebooks.get(id)?.name ?? null) : null)
-  const scopeName = notebookName(model.searchNotebookId.value)
+  const scopeName = model.searchScope.value
+  // a search limited by tag widens to every note; one limited to a notebook only, to every notebook
+  const widen = model.searchTagIds.value.length > 0 ? 'all notes' : 'all notebooks'
   // data-model.md "List groups (web)": headings outside search and the Trash; pinned first where the view sorts so
   const view = model.selection.value.kind
   const grouped = !searching && view !== 'trash'
@@ -120,8 +122,8 @@ export function NoteList({ model, onOpen, onEnter }: { model: AppModel; onOpen: 
         {searching && scopeName && rows.length > 0 && (
           <p class="scope-chip">
             Only in {scopeName} ·{' '}
-            <button type="button" class="link-button" onClick={() => model.setSearchNotebook(null)}>
-              Search all notebooks
+            <button type="button" class="link-button" onClick={() => model.searchEverywhere()}>
+              Search {widen}
             </button>
           </p>
         )}
@@ -217,20 +219,22 @@ function EmptyList({ model }: { model: AppModel }) {
           <p>Notes you delete wait here for 30 days before they're removed for good.</p>
         </div>
       )
-    case 'noSearchResults':
+    case 'noSearchResults': {
+      const widen = model.searchTagIds.value.length > 0 ? 'all notes' : 'all notebooks'
       return (
         <div class="empty">
           <h3 class="empty-title">No notes match “{e.query}”</h3>
           {e.limitedTo && (
             <>
-              <p>You're searching in {e.limitedTo} only. Try all notebooks, or fewer words.</p>
-              <button type="button" class="button" onClick={() => model.setSearchNotebook(null)}>
-                Search all notebooks
+              <p>You're searching in {e.limitedTo} only. Try {widen}, or fewer words.</p>
+              <button type="button" class="button" onClick={() => model.searchEverywhere()}>
+                Search {widen}
               </button>
             </>
           )}
         </div>
       )
+    }
     default:
       return (
         <div class="empty">

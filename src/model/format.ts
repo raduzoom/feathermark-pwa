@@ -62,6 +62,13 @@ export function noteCount(n: number): string {
   return n === 1 ? '1 note' : `${n} notes`
 }
 
+/** What a search is limited to, for "Only in …" and the no-results message: "Personal", "#hardware",
+ *  "Personal, #hardware #ideas"; null when it searches every note. */
+export function searchScopeName(notebookName: string | null, tagNames: string[]): string | null {
+  const tags = tagNames.map((t) => `#${t}`).join(' ')
+  return [notebookName, tags].filter(Boolean).join(', ') || null
+}
+
 const BLOCK_START = /^(#{1,6}|>|[-*+]( \[[ xX]\])?|\d+\.)\s/
 const BLOCK_MARK = /(^|\s)(#{1,6}|>|[-*+] \[[ xX]\]|[-*+])(?=\s)/g
 const SENTENCE_END = /[.,;:!?]$/

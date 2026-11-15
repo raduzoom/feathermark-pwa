@@ -5,7 +5,7 @@ import { systemClock, type Clock } from '../core/clock.ts'
 import { attachmentId, attachmentSnippet, MAX_ATTACHMENT_BYTES, sha256Hex, type Attachment } from '../core/library/attachments.ts'
 import type { Library, LibraryChange } from '../core/library/library.ts'
 import { LibraryError, type Counts, type Note, type Notebook, type NoteSummary, type Tag, type View } from '../core/library/types.ts'
-import { errorMessage, tooLargeMessage, unreadableMessage } from './format.ts'
+import { errorMessage, searchScopeName, tooLargeMessage, unreadableMessage } from './format.ts'
 
 export type ResolvedAttachment = { objectUrl: string; filename: string; mime: string; image: boolean }
 export type Row = { note: NoteSummary; snippet: string | null; matches: Array<[number, number]> }
@@ -35,6 +35,8 @@ export type AppModel = {
   searchText: ReadonlySignal<string>
   searchNotebookId: ReadonlySignal<string | null>
   searchTagIds: ReadonlySignal<string[]>
+  /** What a search is limited to ("Personal", "#hardware", "Personal, #hardware"), or null for every note. */
+  searchScope: ReadonlySignal<string | null>
   emptyState: ReadonlySignal<EmptyState | null>
   undo: ReadonlySignal<{ noteId: string; title: string } | null>
   error: ReadonlySignal<string | null>
@@ -68,8 +70,11 @@ export type AppModel = {
   renameTag(id: string, name: string): void
   deleteTag(id: string): void
   setSearch(text: string): void
-  searchAll(text: string): void
+  /** Searches every note from "All notes"; quick actions pass the tags chosen with "#" to keep only notes with all of them. */
+  searchAll(text: string, tagIds?: string[]): void
   setSearchNotebook(id: string | null): void
+  /** Drops the notebook and tags a search is limited to, keeping its words. */
+  searchEverywhere(): void
   toggleSearchTag(id: string): void
   focusTitleDone(): void
   toggleRaw(): void
@@ -221,10 +226,15 @@ export function createAppModel(
       }
     }
   })
+  const searchScope = computed(() => {
+    if (!searching.value) return null
+    const names = tags.value.filter((t) => searchTagIds.value.includes(t.id)).map((t) => t.name)
+    return searchScopeName(notebookName(searchNotebookId.value), names)
+  })
   const emptyState = computed<EmptyState | null>(() => {
     const list = rows.value
     if (searching.value && list.length === 0) {
-      return { kind: 'noSearchResults', query: searchText.value, limitedTo: notebookName(searchNotebookId.value) }
+      return { kind: 'noSearchResults', query: searchText.value, limitedTo: searchScope.value }
     }
     if (list.length === 0) {
       const c = counts.value
@@ -344,6 +354,7 @@ export function createAppModel(
     searchText,
     searchNotebookId,
     searchTagIds,
+    searchScope,
     emptyState,
     undo,
     error,
@@ -517,12 +528,19 @@ export function createAppModel(
         searchText.value = text
       })
     },
-    searchAll(text) {
+    searchAll(text, tagIds = []) {
       if (selection.value.kind !== 'all') model.select({ kind: 'all' })
       model.setSearch(text)
+      if (searching.value) change(() => (searchTagIds.value = tagIds.filter((id) => tags.value.some((t) => t.id === id))))
     },
     setSearchNotebook(id) {
       change(() => (searchNotebookId.value = id))
+    },
+    searchEverywhere() {
+      change(() => {
+        searchNotebookId.value = null
+        searchTagIds.value = []
+      })
     },
     toggleSearchTag(id) {
       change(() => {
