@@ -105,6 +105,10 @@
 .page[data-demo='true'] .side-foot {
   padding: 0 var(--space-16) var(--space-16);
 }
+/* from 1000 px the demo card is in the library, so the foot is empty in the demo */
+.side-foot:empty {
+  display: none;
+}
 
 /* The stage: the "open in another tab" and offline lines, then the sheet */
 .stage {
@@ -249,8 +253,93 @@
   }
 }
 
+/* The library as a rail of icons (from 1000 px): names, counts, headings, sub-notebooks and tags are out of it; the
+   names stay as the buttons' accessible names and show as tooltips. */
+@media (min-width: 1000px) {
+  .page[data-rail='true'],
+  .page[data-rail='true'][data-demo='true'] {
+    grid-template-columns: var(--layout-library-rail-width) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+  }
+  .page[data-rail='true'] .appbar {
+    flex-direction: column;
+    height: auto;
+    padding: var(--space-8) 0 var(--space-16);
+  }
+  /* still the page's heading for screen readers */
+  .page[data-rail='true'] .brand-name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .page[data-rail='true'] .search-button {
+    justify-content: center;
+    width: var(--h-button-large);
+    height: var(--h-button-large);
+    padding: 0;
+  }
+  .page[data-rail='true'] .search-button kbd,
+  .page[data-rail='true'] .new-note .lib-label,
+  .page[data-rail='true'] .lib-name,
+  .page[data-rail='true'] .lib-count,
+  .page[data-rail='true'] .lib-item .menu-anchor,
+  .page[data-rail='true'] .lib-section,
+  .page[data-rail='true'] .lib-chips,
+  .page[data-rail='true'] .lib-item[data-depth]:not([data-depth='0']),
+  .page[data-rail='true'] .demo-line p,
+  .page[data-rail='true'] .demo-actions,
+  .page[data-rail='true'] .demo-link-labels,
+  .page[data-rail='true'] .sync-line {
+    display: none;
+  }
+  .page[data-rail='true'] .library-top {
+    display: flex;
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .page[data-rail='true'] .new-note,
+  .page[data-rail='true'] .lib-row,
+  .page[data-rail='true'] .demo-link {
+    flex: none;
+    justify-content: center;
+    width: var(--h-button-large);
+    height: var(--h-button-large);
+    padding: 0;
+  }
+  .page[data-rail='true'] .library-scroll {
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .page[data-rail='true'] .lib-list {
+    align-items: center;
+  }
+  /* a hairline where the Notebooks heading was */
+  .page[data-rail='true'] .lib-list[aria-labelledby='notebooks-heading'] {
+    margin-top: var(--space-16);
+    padding-top: var(--space-16);
+    box-shadow: inset 0 1px 0 var(--c-line-hairline);
+  }
+  .page[data-rail='true'] .side-foot,
+  .page[data-rail='true'][data-demo='true'] .side-foot {
+    align-items: center;
+    padding: var(--space-16) 0 0;
+  }
+  .page[data-rail='true'] .demo-line {
+    width: auto;
+    padding: 0;
+    box-shadow: none;
+  }
+}
+
 /* Tablet: the library is a drawer */
 @media (max-width: 999px) {
+  /* two classes: library.css, loaded later, sets .lib-item to flex */
+  .lib-item.lib-rail-toggle {
+    display: none;
+  }
   .scrim {
     position: fixed;
     inset: 0;

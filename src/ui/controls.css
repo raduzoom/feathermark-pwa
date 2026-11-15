@@ -70,7 +70,7 @@
 .menu-item[data-depth='1'] { padding-left: 24px; }
 .menu-item[data-depth='2'] { padding-left: 40px; }
 .menu-item[data-depth='3'] { padding-left: 56px; }
-.menu-item[data-depth='4'] { padding-left: 72px; }
+.menu-item[data-depth='4'] { padding-left: 72px; /* design-system: not a layout size (a menu indent, not the rail) */ }
 .menu-item[data-danger='true'] {
   color: var(--c-danger-text);
 }
@@ -307,6 +307,26 @@
 .qa-esc:hover {
   background: var(--c-line-hairline);
 }
+/* a tag filter in the field, removed with its × or Backspace */
+.qa-chip {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: var(--h-toolbar-desktop);
+  padding: 0 var(--space-8) 0 12px;
+  border-radius: var(--radius-pill);
+  background: var(--c-accent-tint);
+  color: var(--c-accent-tint-on-tint);
+  font-size: var(--type-ui-label-size);
+  font-weight: 600;
+}
+.qa-chip svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
 .qa-foot {
   margin: 0;
   padding: var(--space-8) var(--space-16);
@@ -420,9 +440,17 @@
   font-weight: 600;
   text-decoration: none;
 }
+/* From 1000 px, in the library's foot, it is a quiet text button: "Collapse sidebar" under Trash carries the outline */
 @media (min-width: 1000px) {
   .demo-link {
+    justify-content: flex-start;
     min-height: var(--h-button-large);
+    padding: 0 var(--space-8);
+    border-radius: var(--radius-input);
+    box-shadow: none;
+  }
+  .demo-link-labels > span {
+    text-align: left;
   }
 }
 @media (max-width: 639px) {

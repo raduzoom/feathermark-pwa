@@ -28,7 +28,11 @@ const drawerOpen = signal(false)
 /** Below 640 px: the list is the start screen; the note opened from it shows full width while it stays open.
  *  When it leaves (trashed, deleted, replaced), the list comes back rather than another note or an empty pane. */
 const phoneOpenId = signal<string | null>(null)
+/** From 1000 px: the library shrunk to a rail of icons. In memory only: a reload shows the full library again. */
+const railOn = signal(false)
 const DESKTOP = '(min-width: 1000px)'
+/** From 1000 px the demo card sits in the library, above Trash; below, it is the strip under the app bar. */
+const desktopWide = signal(matchMedia(DESKTOP).matches)
 /** Accounts are on in a build with VITE_FEATHER_CLOUD_URL; without it this is the plain demo. */
 const accounts = Boolean(import.meta.env.VITE_FEATHER_CLOUD_URL)
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform)
@@ -111,6 +115,7 @@ export function App({ model, demoLibrary }: { model: AppModel; demoLibrary: () =
   useEffect(() => {
     const desktop = matchMedia(DESKTOP)
     const onChange = () => {
+      desktopWide.value = desktop.matches
       if (desktop.matches) close(false)
     }
     desktop.addEventListener('change', onChange)
@@ -186,55 +191,9 @@ export function App({ model, demoLibrary }: { model: AppModel; demoLibrary: () =
   if (screen === 'create') return <CreateAccount flow={onboarding!} />
 
   const unlocked = session !== null && account.kind === 'unlocked'
-  const openFromList = () => (phoneOpenId.value = model.openNote.value?.id ?? null)
-
-  // One instance of each piece; CSS grid areas place them by width (shell.css). While the drawer is open, everything
-  // outside it (app bar, side foot, stage, bottom bar) is inert: out of reach for keyboard and screen reader.
-  return (
-    <div class="page" data-phone-note={phoneNote ? 'true' : 'false'} data-demo={account.kind === 'demo' ? 'true' : 'false'}>
-      <div class="glow glow-mint" aria-hidden="true" />
-      <div class="glow glow-peach" aria-hidden="true" />
-
-      <header class="appbar" inert={open}>
-        <button
-          ref={menu}
-          type="button"
-          class="menu-button"
-          aria-label="Open library"
-          aria-expanded={open}
-          aria-controls="library"
-          onClick={() => (open ? close(true) : (drawerOpen.value = true))}
-        >
-          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24">
-            <path d="M4 7h16M4 12h16M4 17h16" />
-          </svg>
-        </button>
-        <h1 class="brand">
-          <Logo size={28} />
-          FeatherMark
-        </h1>
-        <button type="button" class="search-button" aria-label="Search and quick actions" onClick={() => (quickActionsOpen.value = true)}>
-          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" class="search-icon">
-            <circle cx="7" cy="7" r="4.5" />
-            <path d="m10.5 10.5 3 3" />
-          </svg>
-          <kbd>{isMac ? '⌘K' : 'Ctrl K'}</kbd>
-        </button>
-      </header>
-
-      {open && <div class="scrim" aria-hidden="true" onClick={() => close(true)} />}
-      <nav id="library" ref={library} tabIndex={-1} aria-label="Library" class="library" data-open={open}>
-        <LibraryPanel
-          model={model}
-          onNavigate={() => {
-            phoneOpenId.value = null
-            if (!matchMedia(DESKTOP).matches) close(false)
-          }}
-        />
-      </nav>
-
-      <div class="side-foot" inert={open}>
-        {account.kind === 'demo' && (
+  const demo = account.kind === 'demo'
+  // one instance at a time: in the library above Trash from 1000 px, the strip under the app bar below
+  const demoCard = (
           <div class="demo-line">
             <p>This is a demo. Notes here aren't saved.</p>
             {accounts ? (
@@ -259,7 +218,59 @@ export function App({ model, demoLibrary }: { model: AppModel; demoLibrary: () =
               </a>
             )}
           </div>
-        )}
+  )
+  const openFromList = () => (phoneOpenId.value = model.openNote.value?.id ?? null)
+
+  // One instance of each piece; CSS grid areas place them by width (shell.css). While the drawer is open, everything
+  // outside it (app bar, side foot, stage, bottom bar) is inert: out of reach for keyboard and screen reader.
+  return (
+    <div class="page" data-phone-note={phoneNote ? 'true' : 'false'} data-demo={account.kind === 'demo' ? 'true' : 'false'} data-rail={railOn.value ? 'true' : 'false'}>
+      <div class="glow glow-mint" aria-hidden="true" />
+      <div class="glow glow-peach" aria-hidden="true" />
+
+      <header class="appbar" inert={open}>
+        <button
+          ref={menu}
+          type="button"
+          class="menu-button"
+          aria-label="Open library"
+          aria-expanded={open}
+          aria-controls="library"
+          onClick={() => (open ? close(true) : (drawerOpen.value = true))}
+        >
+          <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24">
+            <path d="M4 7h16M4 12h16M4 17h16" />
+          </svg>
+        </button>
+        <h1 class="brand">
+          <Logo size={28} />
+          <span class="brand-name">FeatherMark</span>
+        </h1>
+        <button type="button" class="search-button" aria-label="Search and quick actions" onClick={() => (quickActionsOpen.value = true)}>
+          <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" class="search-icon">
+            <circle cx="7" cy="7" r="4.5" />
+            <path d="m10.5 10.5 3 3" />
+          </svg>
+          <kbd>{isMac ? '⌘K' : 'Ctrl K'}</kbd>
+        </button>
+      </header>
+
+      {open && <div class="scrim" aria-hidden="true" onClick={() => close(true)} />}
+      <nav id="library" ref={library} tabIndex={-1} aria-label="Library" class="library" data-open={open}>
+        <LibraryPanel
+          model={model}
+          rail={railOn.value}
+          onToggleRail={() => (railOn.value = !railOn.value)}
+          beforeTrash={demo && desktopWide.value ? demoCard : null}
+          onNavigate={() => {
+            phoneOpenId.value = null
+            if (!matchMedia(DESKTOP).matches) close(false)
+          }}
+        />
+      </nav>
+
+      <div class="side-foot" inert={open}>
+        {demo && !desktopWide.value && demoCard}
         {unlocked && <SyncLine session={session} />}
         {unlocked && <AccountMenu session={session} />}
       </div>

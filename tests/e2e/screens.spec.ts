@@ -61,3 +61,13 @@ test('screen phone with a note open', async ({ page, leaks }, info) => {
   await page.getByRole('option', { name: /^1:1 with Mara/ }).click()
   await shoot(page, leaks, info.project.name, `test-results/screens/${info.project.name}-390-note.png`)
 })
+
+for (const scheme of ['light', 'dark'] as const) {
+  test(`screen desktop ${scheme} with the sidebar as a rail`, async ({ page, leaks }, info) => {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.emulateMedia({ colorScheme: scheme })
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Collapse sidebar' }).click()
+    await shoot(page, leaks, info.project.name, `test-results/screens/${info.project.name}-1440-rail-${scheme}.png`)
+  })
+}

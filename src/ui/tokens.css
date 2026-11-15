@@ -117,6 +117,7 @@
   --h-target-android-min: 48px;
   --h-button-mobile-primary: 52px;
   --layout-library-width: 232px;
+  --layout-library-rail-width: 72px;
   --layout-list-width-basis: 304px;
   --layout-list-width-min: 280px;
   --layout-list-width-max: 340px;

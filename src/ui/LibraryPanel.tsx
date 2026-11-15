@@ -12,7 +12,7 @@ import { notebookInfo } from './notebook-tint.ts'
 const tagsOpen = signal(false)
 
 /** 16 px line icons for the views (web-shell-redesign.dc.html). */
-const ICONS: Record<'all' | 'recent' | 'pinned' | 'trash', ComponentChildren> = {
+const ICONS: Record<'all' | 'recent' | 'pinned' | 'trash' | 'sidebar', ComponentChildren> = {
   all: <path d="M4 2h6l3 3v9H4zM6.5 8h4M6.5 11h4" />,
   recent: (
     <>
@@ -22,6 +22,7 @@ const ICONS: Record<'all' | 'recent' | 'pinned' | 'trash', ComponentChildren> = 
   ),
   pinned: <path d="M6 2h4l-.5 4.5L12 9H4l2.5-2.5zM8 9v5" />,
   trash: <path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.5 9h6l.5-9" />,
+  sidebar: <path d="M2.5 3.5h11v9h-11zM6 3.5v9" />,
 }
 const icon = (name: keyof typeof ICONS) => (
   <svg aria-hidden="true" class="lib-icon" width="16" height="16" viewBox="0 0 16 16">
@@ -45,7 +46,8 @@ export function notebookTree(notebooks: Notebook[], exclude?: Set<string>): Arra
   return out
 }
 
-export function LibraryPanel({ model, onNavigate }: { model: AppModel; onNavigate: () => void }) {
+/** `rail`: from 1000 px the column is shrunk to icons (shell.css hides the names); each row's name is then its tooltip. */
+export function LibraryPanel({ model, onNavigate, rail, onToggleRail, beforeTrash }: { model: AppModel; onNavigate: () => void; rail: boolean; onToggleRail: () => void; beforeTrash?: ComponentChildren }) {
   const counts = model.counts.value
   const selection = model.selection.value
   const go = (v: View) => {
@@ -53,12 +55,13 @@ export function LibraryPanel({ model, onNavigate }: { model: AppModel; onNavigat
     onNavigate()
   }
 
-  const viewRow = (view: View & { kind: keyof typeof ICONS }, label: string, count: number | null, menu?: () => MenuItem[]) => (
+  const viewRow = (view: View & { kind: 'all' | 'recent' | 'pinned' | 'trash' }, label: string, count: number | null, menu?: () => MenuItem[]) => (
     <li class={menu ? 'lib-item has-menu' : 'lib-item'}>
       <button
         type="button"
         class="lib-row"
         aria-label={label}
+        title={rail ? label : undefined}
         aria-current={sameView(selection, view) ? 'page' : undefined}
         onClick={() => go(view)}
       >
@@ -101,11 +104,11 @@ export function LibraryPanel({ model, onNavigate }: { model: AppModel; onNavigat
   return (
     <div class="library-body">
       <div class="library-top">
-        <button type="button" class="new-note" onClick={() => model.newNote()}>
+        <button type="button" class="new-note" aria-label="New note" title={rail ? 'New note' : undefined} onClick={() => model.newNote()}>
           <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" class="lib-icon">
             <path d="M8 3v10M3 8h10" />
           </svg>
-          New note
+          <span class="lib-label">New note</span>
         </button>
       </div>
       <div class="library-scroll">
@@ -132,6 +135,7 @@ export function LibraryPanel({ model, onNavigate }: { model: AppModel; onNavigat
                 type="button"
                 class="lib-row"
                 aria-label={nb.name}
+                title={rail ? nb.name : undefined}
                 aria-current={sameView(selection, { kind: 'notebook', id: nb.id }) ? 'page' : undefined}
                 onClick={() => go({ kind: 'notebook', id: nb.id })}
               >
@@ -155,6 +159,10 @@ export function LibraryPanel({ model, onNavigate }: { model: AppModel; onNavigat
             onClick={() => (tagsOpen.value = !tagsShown)}
           >
             <span class="overline">Tags</span>
+            {/* points right while folded, down while open */}
+            <svg aria-hidden="true" width="12" height="12" viewBox="0 0 16 16" class="lib-icon lib-fold-chevron">
+              <path d="m6 4 4 4-4 4" />
+            </svg>
             {tags.length > 0 && (
               <span class="lib-count lib-fold-count">
                 <span class="lib-fold-dot" aria-hidden="true" />
@@ -172,6 +180,7 @@ export function LibraryPanel({ model, onNavigate }: { model: AppModel; onNavigat
                   type="button"
                   class="lib-chip"
                   aria-label={`#${tag.name}`}
+                  data-label={`#${tag.name}`}
                   aria-current={sameView(selection, { kind: 'tag', id: tag.id }) ? 'page' : undefined}
                   onClick={() => go({ kind: 'tag', id: tag.id })}
                 >
@@ -202,9 +211,24 @@ export function LibraryPanel({ model, onNavigate }: { model: AppModel; onNavigat
         </ul>
 
         <ul class="lib-list lib-foot">
+          {/* the demo card, from 1000 px (App.tsx) */}
+          {beforeTrash && <li class="lib-demo">{beforeTrash}</li>}
           {viewRow({ kind: 'trash' }, 'Trash', counts.trash, () => [
             { label: 'Empty Trash…', danger: true, onSelect: () => act.emptyTrash(model) },
           ])}
+          {/* from 1000 px only (below that the library is the drawer); the last button, under Trash */}
+          <li class="lib-item lib-rail-toggle">
+            <button
+              type="button"
+              class="lib-row lib-rail-button"
+              aria-label={rail ? 'Expand sidebar' : 'Collapse sidebar'}
+              title={rail ? 'Expand sidebar' : undefined}
+              onClick={onToggleRail}
+            >
+              {icon('sidebar')}
+              <span class="lib-name">Collapse sidebar</span>
+            </button>
+          </li>
         </ul>
       </div>
     </div>

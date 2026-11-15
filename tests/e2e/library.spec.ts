@@ -84,13 +84,18 @@ test('"New tag" is inside the open Tags panel, not on the Tags row', async ({ pa
   await expect(library(page).getByRole('list', { name: 'Tags' }).getByRole('button', { name: 'New tag', exact: true })).toBeVisible()
 })
 
-test('Trash sits at the foot of the library', async ({ page }) => {
-  const trash = (await library(page).getByRole('button', { name: 'Trash', exact: true }).boundingBox())!
+test('the library ends with the demo card, Trash, then Collapse sidebar', async ({ page }) => {
+  const box = async (name: string) => (await library(page).getByRole('button', { name, exact: true }).boundingBox())!
   const nav = (await library(page).boundingBox())!
-  const travel = (await library(page).getByRole('button', { name: 'Travel', exact: true }).boundingBox())!
-  expect(trash.y).toBeGreaterThan(travel.y)
-  // the scroll area's bottom padding (16 px) is all that's under it
-  expect(nav.y + nav.height - (trash.y + trash.height)).toBeLessThanOrEqual(24)
+  const travel = await box('Travel')
+  const trash = await box('Trash')
+  const collapse = await box('Collapse sidebar')
+  const demo = (await library(page).getByRole('link', { name: 'Get FeatherMark' }).boundingBox())!
+  expect(demo.y).toBeGreaterThan(travel.y)
+  expect(trash.y).toBeGreaterThan(demo.y)
+  expect(collapse.y).toBeGreaterThan(trash.y)
+  // the scroll area's bottom padding (16 px) is all that's under the last button
+  expect(nav.y + nav.height - (collapse.y + collapse.height)).toBeLessThanOrEqual(24)
 })
 
 test('rows are grouped under Pinned, Today, Yesterday and Earlier', async ({ page }) => {
@@ -133,4 +138,32 @@ test('the Trash shows deleted notes with their removal date', async ({ page }) =
   await library(page).getByRole('button', { name: 'Trash', exact: true }).click()
   const row = list(page).getByRole('option', { name: /Old draft/ })
   await expect(row).toContainText('Deleted today · removed in 30 days')
+})
+
+test('tag chips keep their place when hovered, chosen or their menu opens, and the menu stays in the library', async ({ page }) => {
+  await openTags(page)
+  const names = ['#hardware', '#ideas', '#reading', '#to-do']
+  // to the pixel: bold and regular text can differ by a sliver of one in Chromium
+  const boxes = async () =>
+    (await Promise.all(names.map((n) => library(page).getByRole('button', { name: n, exact: true }).boundingBox()))).map((b) => ({
+      x: Math.round(b!.x),
+      y: Math.round(b!.y),
+      width: Math.round(b!.width),
+      height: Math.round(b!.height),
+    }))
+  const before = await boxes()
+  const hardware = library(page).getByRole('button', { name: '#hardware', exact: true })
+  await hardware.hover()
+  expect(await boxes()).toEqual(before)
+  await hardware.click()
+  expect(await boxes()).toEqual(before)
+  await library(page).getByRole('button', { name: 'More for #hardware' }).click()
+  const menu = page.getByRole('menu', { name: 'More for #hardware' })
+  await expect(menu).toBeVisible()
+  expect(await boxes()).toEqual(before)
+  const nav = (await library(page).boundingBox())!
+  const box = (await menu.boundingBox())!
+  expect(box.x).toBeGreaterThanOrEqual(nav.x)
+  expect(box.x + box.width).toBeLessThanOrEqual(nav.x + nav.width)
+  expect(box.y).toBeGreaterThanOrEqual(before[0]!.y + before[0]!.height)
 })

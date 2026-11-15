@@ -14,10 +14,35 @@
   flex-direction: column;
   padding: 0 var(--space-8) var(--space-16);
 }
-/* Trash alone at the foot of the scroll area */
+/* At the foot of the scroll area: the demo card (from 1000 px), Trash, then "Collapse sidebar" last */
 .lib-list.lib-foot {
   margin-top: auto;
   padding-top: var(--space-16);
+}
+.lib-demo {
+  margin-bottom: var(--space-8);
+}
+/* "Collapse sidebar", the library's last button: outlined, as "Get FeatherMark" was before it moved into the foot */
+.lib-rail-toggle {
+  margin-top: var(--space-8);
+}
+.lib-row.lib-rail-button {
+  justify-content: center;
+  border-radius: var(--radius-control);
+  box-shadow: inset 0 0 0 1px var(--c-action-outline);
+  color: var(--c-text-primary);
+  font-size: var(--type-ui-label-size);
+  font-weight: 600;
+}
+.lib-row.lib-rail-button .lib-name {
+  flex: none;
+}
+.lib-row.lib-rail-button .lib-icon {
+  color: inherit;
+}
+.lib-row.lib-rail-button:hover {
+  background: var(--c-accent-tint);
+  color: var(--c-accent-tint-on-tint);
 }
 .lib-icon {
   flex-shrink: 0;
@@ -164,8 +189,21 @@
   border-radius: var(--radius-input);
 }
 .lib-fold .overline {
-  flex: 1;
   text-align: left;
+}
+/* right after the name, the rest of the row's space before the count */
+.lib-fold-chevron {
+  margin-right: auto;
+  color: var(--c-text-secondary);
+  transition: transform 0.15s ease;
+}
+.lib-fold[aria-expanded='true'] .lib-fold-chevron {
+  transform: rotate(90deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .lib-fold-chevron {
+    transition: none;
+  }
 }
 .lib-fold:hover {
   background: var(--c-line-hairline);
@@ -195,6 +233,20 @@
   padding: 0 12px;
   border-radius: var(--radius-pill);
 }
+/* the name drawn bold once more, hidden and flat, so a tag turning bold when chosen doesn't widen its chip */
+.lib-chip[data-label] {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.lib-chip[data-label]::after {
+  content: attr(data-label);
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  font-weight: 600;
+}
 .lib-chip-item:hover,
 .lib-chip-item:focus-within {
   background: var(--c-line-hairline);
@@ -204,12 +256,25 @@
   color: var(--c-accent-tint-on-tint);
   font-weight: 600;
 }
-.lib-chip-item .menu-anchor {
-  display: none;
+/* The ⋯ always holds its place, dimmed until the chip is hovered or focused, so showing it never reflows the chips.
+   Its menu lines up with the chip list's left edge (the list is the containing block; the chip and anchor are static)
+   so it stays inside the 232 px column, which clips sideways; vertically it keeps the anchor's place, moved below the
+   chip: from the 24 px button's top (centred in the chip) down half the chip, half the button and a gap. */
+.lib-chips {
+  position: relative;
 }
-.lib-chip-item:hover .menu-anchor,
-.lib-chip-item:focus-within .menu-anchor {
-  display: inline-flex;
+.lib-chip-item .menu-anchor {
+  position: static;
+}
+.lib-chip-item .menu {
+  top: auto;
+  left: 0;
+  right: 0;
+  margin-top: calc(var(--h-toolbar-desktop) / 2 + 12px + var(--space-4));
+}
+.lib-chip-item:hover .lib-chip-more,
+.lib-chip-item:focus-within .lib-chip-more {
+  color: var(--c-text-secondary);
 }
 /* "New tag", last in the open panel */
 .lib-chip-add-item {
@@ -231,12 +296,10 @@
   height: 24px;
   margin-right: var(--space-4);
   border-radius: var(--radius-pill);
-  color: var(--c-text-secondary);
+  color: var(--c-text-placeholder);
 }
-@media (hover: none) {
-  .lib-chip-item .menu-anchor {
-    display: inline-flex;
-  }
+.lib-chip-item:has(.lib-chip-more) .lib-chip {
+  padding-right: var(--space-4);
 }
 .lib-fold-count {
   display: inline-flex;
