@@ -189,7 +189,7 @@
     min-height: var(--h-target-ios-min);
   }
   .account-menu-trigger {
-    max-width: 120px;
+    max-width: 120px; /* design-system: not a layout size */
     min-height: var(--h-target-ios-min);
   }
   .account-card {

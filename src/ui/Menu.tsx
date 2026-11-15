@@ -4,7 +4,7 @@ import type { ComponentChildren, RefObject } from 'preact'
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 
 export type MenuItem =
-  | { label: string; onSelect?: () => void; kind?: 'item' | 'checkbox' | 'radio'; checked?: boolean; depth?: number; danger?: boolean; disabled?: boolean; submenu?: () => MenuItem[] }
+  | { label: string; onSelect?: () => void; kind?: 'item' | 'checkbox' | 'radio'; checked?: boolean; depth?: number; danger?: boolean; disabled?: boolean; icon?: ComponentChildren; submenu?: () => MenuItem[] }
   | 'separator'
 
 const ROLE = { item: 'menuitem', checkbox: 'menuitemcheckbox', radio: 'menuitemradio' } as const
@@ -94,6 +94,8 @@ export function MenuList({ menuRef, label, items, onClose, onSubmenu, class: cls
     if (e.key !== 'Tab') e.preventDefault()
     e.stopPropagation()
   }
+  // one leading 16 px column for the whole menu when any item has a box, a dot or an icon, so every label lines up
+  const lead = items.some((i) => i !== 'separator' && (i.kind === 'checkbox' || i.kind === 'radio' || i.icon))
   return (
     <div ref={menuRef} role="menu" aria-label={label} class={cls ?? 'menu'} onKeyDown={onKey}>
       {items.map((item, i) =>
@@ -119,8 +121,24 @@ export function MenuList({ menuRef, label, items, onClose, onSubmenu, class: cls
               }
             }}
           >
-            {item.kind === 'checkbox' || item.kind === 'radio' ? <span class="menu-check" aria-hidden="true">{item.checked ? '✓' : ''}</span> : null}
-            {item.label}
+            {lead && (
+              <span class="menu-lead" aria-hidden="true">
+                {item.kind === 'checkbox' ? (
+                  <span class="menu-box" data-checked={item.checked ? 'true' : 'false'}>
+                    {item.checked && (
+                      <svg width="12" height="12" viewBox="0 0 12 12">
+                        <path d="m2.5 6.2 2.3 2.3 4.7-4.9" />
+                      </svg>
+                    )}
+                  </span>
+                ) : item.kind === 'radio' ? (
+                  <span class="menu-radio" data-checked={item.checked ? 'true' : 'false'} />
+                ) : (
+                  item.icon
+                )}
+              </span>
+            )}
+            <span class="menu-label">{item.label}</span>
           </div>
         ),
       )}

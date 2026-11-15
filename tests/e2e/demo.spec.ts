@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
+import { openTags } from './support/tags'
 import { noteMore } from './support/note-more'
 
 const library = (page: Page) => page.getByRole('navigation', { name: 'Library' })
@@ -72,6 +73,7 @@ test('a whole demo session stores and sends nothing', async ({ page }) => {
   await library(page).getByRole('button', { name: 'New notebook', exact: true }).click()
   await page.getByRole('dialog').getByRole('textbox', { name: 'Name' }).fill('Session')
   await page.getByRole('dialog').getByRole('button', { name: 'Create' }).click()
+  await openTags(page)
   await library(page).getByRole('button', { name: 'New tag', exact: true }).click()
   await page.getByRole('dialog').getByRole('textbox', { name: 'Name' }).fill('checked')
   await page.getByRole('dialog').getByRole('button', { name: 'Create' }).click()

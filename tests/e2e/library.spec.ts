@@ -65,6 +65,25 @@ test('tags are folded until opened, and open when a tag is the selected view', a
   await expect(reading).toHaveCount(0)
 })
 
+test('counts, the Tags count and the "+" share one right-hand column', async ({ page }) => {
+  const right = async (l: ReturnType<typeof library>) => {
+    const b = (await l.boundingBox())!
+    return Math.round(b.x + b.width)
+  }
+  const count = (row: string, n: string) => library(page).getByRole('button', { name: row, exact: true }).getByText(n, { exact: true })
+  // the "+" is a 16 px icon centred in a 32 px button: it ends 8 px in from the button's edge
+  const plus = (await right(library(page).getByRole('button', { name: 'New notebook', exact: true }))) - 8
+  const rows: Array<[string, string]> = [['All notes', '7'], ['Pinned', '3'], ['Personal', '3'], ['Home', '1'], ['Tags', '4'], ['Trash', '1']]
+  for (const [row, n] of rows)
+    expect(await right(count(row, n)), `${row} count`).toBe(plus)
+})
+
+test('"New tag" is inside the open Tags panel, not on the Tags row', async ({ page }) => {
+  await expect(library(page).getByRole('button', { name: 'New tag', exact: true })).toHaveCount(0)
+  await openTags(page)
+  await expect(library(page).getByRole('list', { name: 'Tags' }).getByRole('button', { name: 'New tag', exact: true })).toBeVisible()
+})
+
 test('Trash sits at the foot of the library', async ({ page }) => {
   const trash = (await library(page).getByRole('button', { name: 'Trash', exact: true }).boundingBox())!
   const nav = (await library(page).boundingBox())!

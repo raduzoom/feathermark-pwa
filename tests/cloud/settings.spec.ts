@@ -224,6 +224,7 @@ test('the offer comes after the first sync, so a tag the account already has is 
   await mac.sync()
 
   await page.goto('/')
+  await openTags(page)
   await libraryNav(page).getByRole('button', { name: 'New tag', exact: true }).click()
   const named = page.getByRole('dialog', { name: 'New tag' })
   await named.getByRole('textbox', { name: 'Name' }).fill('Work')

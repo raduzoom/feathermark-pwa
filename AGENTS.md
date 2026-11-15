@@ -31,7 +31,7 @@ This repo is the web app: a TypeScript app served as static files from `app.feat
 | `pnpm typecheck` | TypeScript over everything, tests and the test page included. `pnpm build` checks only what it ships (`tsconfig.build.json`), so it builds without `../universal`. |
 | `pnpm e2e` | Browser tests (Playwright), `tests/e2e/`, against a fresh build on 8431. `FEATHER_ENGINES=chromium,webkit` picks engines. |
 | `FEATHER_LIVE_URL=https://app.feathermark.com pnpm e2e:live` | The published demo, checked from outside with the same leak fixture (`tests/live/`). |
-| `pnpm tokens` | Regenerates `src/ui/tokens.css` from `../universal/design/tokens.json`. |
+| `pnpm design-system` | Regenerates `src/ui/tokens.css` from `../universal/design/tokens.json` (colours, type, spacing, radii, heights and `layout.web` as `--layout-*`), then checks the stylesheets against it; `--check` only checks (see "Styles"). |
 | `pnpm spike` | Builds with the test pages (`/spike/argon2.html`, the Argon2id device page; `/spike/vectors.html`, every crypto vector in a worker) and serves them on 8431. For a phone, open them over HTTPS (see "Device checks"). |
 | `pnpm e2e:cloud` | The accounts build: `VITE_FEATHER_CLOUD_URL=http://localhost:8420` into `dist-cloud/`, served on 8431 (so never beside `pnpm e2e` or `pnpm preview`), running `tests/cloud/` against the local server. |
 | `bash scripts/test_all.sh` | Every check in order, including the first load (`scripts/bundle-size.ts`: lists its files; fails over 300 KB gzipped or on crypto or sync code in it); runs the `cloud` step (and `cloud speed`, the `@speed` cloud tests alone on one worker) only when something answers on 8420, else prints `skipped: no local server`, and after it the same first-load check on the accounts build (`--dir dist-cloud`); must end with `all tests: OK`. |
@@ -211,18 +211,20 @@ FEATHER_LIVE_URL=https://app.feathermark.com FEATHER_ENGINES=chromium,webkit pnp
 
 ## Styles (when adding a stylesheet or a component)
 
-- Colours only through the variables in `src/ui/tokens.css` (`--c-*`, `--icon-*`); a unit test fails on any colour literal elsewhere. Sizes, spacing and radii also come from it where a token exists.
-- The shell (`App.tsx`, `shell.css`; design `../universal/design/handoff/screens/web-shell-redesign.dc.html`) is a CSS grid of areas. From 1000 px: a 232 px column of the app bar, the library (no panel, straight on the window) and the side foot (the demo card, or the sync line and account menu), beside the stage, whose one glass sheet (`.panel.sheet`) holds the list and the open note from the top of the window to the bottom. Each piece is rendered once; widths only move it between grid areas, never render it twice.
+- Colours only through the variables in `src/ui/tokens.css` (`--c-*`, `--icon-*`). Sizes, spacing and radii also come from it where a token exists, and the web's layout sizes from `--layout-*` (`layout.web`).
+- `pnpm design-system --check` (`scripts/design-system.ts`, a step of `test_all.sh`; the same rules run in `tests/unit/design-system.test.ts`) fails on: `tokens.css` out of date; a colour literal outside `tokens.css`; a `var(--x)` nothing defines; a `layout.web` size written as raw px (one no other token shares, e.g. 232, 680); an `@media` width that isn't a `layout.web` breakpoint (1000, 999, 639). A px value that only happens to equal a layout size is marked `/* design-system: not a layout size */`.
+- The shell (`App.tsx`, `shell.css`; design `../universal/design/handoff/screens/web-shell-redesign.dc.html`) is a CSS grid of areas. From 1000 px: a 232 px column of the app bar, the library (no panel, straight on the window) and the side foot (the demo card, or the sync line and account menu), beside the stage, whose one glass sheet (`.panel.sheet`, `glass.sidebar`; the list's side `glass.listPane`) holds the list and the open note from the top of the window to the bottom. The sizes follow the canvas exactly and are listed in `../universal/design/tokens.json` › `layout.web` (40 px controls, 680 px measure centred, 12 px control radius as `--radius-control` in `shell.css`); modal dialogs, quick actions and the drawer dim with `--c-scrim`, menus sit on `--c-surface-menu`. Each piece is rendered once; widths only move it between grid areas, never render it twice.
 - Widths: the library column from 1000 px; the library is a drawer from 640 to 999 px, with "New note" in the bottom bar and the demo card as a strip under the app bar; one column below 640 px with 44 px targets. Light and dark follow the system.
 - While the drawer is open, everything outside it is `inert`: the app bar, the side foot, the stage and the bottom bar. It closes when the window reaches 1000 px. New content behind the drawer must sit inside one of those inert containers.
 - Positioned grid areas paint above the glows (`.glow` is absolute); a new area needs `position: relative` or the mint glow covers it.
 - Quick actions (`QuickActions.tsx`, Ctrl/⌘+K or the app bar's search button) are a modal `<dialog>` holding the "Search all notes" field. They list note titles, so `App.tsx` closes them in the same layout effect as `closeDialogsNotOn` whenever the notes leave the screen (lock, sign-out, an account screen). "This note" is the note open when they opened.
-- The library's Tags section is folded at load; whether it is open lives in a signal in memory only (`LibraryPanel.tsx`), so a reload folds it again. It also shows while a tag is the selected view.
+- Notebook dots take the top-level notebook's position in name order (`notebook-tint.ts`), so they stay the same across demo loads. Row previews drop Markdown marks for display only (`plainPreview` in `format.ts`, cached per preview).
+- The library's Tags section (chips) is folded at load; whether it is open lives in a signal in memory only (`LibraryPanel.tsx`), so a reload folds it again. It also shows while a tag is the selected view.
 - Fonts are the system stacks in `--font-serif`, `--font-sans`, `--font-mono`. No web fonts.
 
 ## When `tokens.json` changes
 
-`pnpm tokens`, then `pnpm test`. `scripts/test_all.sh` fails while `tokens.css` is stale.
+`pnpm design-system`, then `pnpm test`. `scripts/test_all.sh` (its "design system" step) fails while `tokens.css` is stale.
 
 ## Dependencies (when adding one)
 

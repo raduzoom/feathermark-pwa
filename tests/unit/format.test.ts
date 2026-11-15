@@ -8,7 +8,9 @@ import {
   emptyTrashConfirmation,
   errorMessage,
   listDate,
+  noteCount,
   noteMeta,
+  plainPreview,
   rowGroup,
   trashMeta,
 } from '../../src/model/format.ts'
@@ -91,4 +93,26 @@ test('rowGroup: the edges are local midnights', () => {
   const tokyo = { locale: 'en-GB', timeZone: 'Asia/Tokyo' }
   expect(rowGroup({ modified: now, pinned: false }, true, now, tokyo)).toBe('Today')
   expect(rowGroup({ modified: now - 60_000, pinned: false }, true, now, tokyo)).toBe('Yesterday')
+})
+
+test('noteCount', () => {
+  expect(noteCount(1)).toBe('1 note')
+  expect(noteCount(7)).toBe('7 notes')
+  expect(noteCount(0)).toBe('0 notes')
+})
+
+test('plainPreview drops Markdown marks from a row preview, for display only', () => {
+  expect(plainPreview('- [ ] Oat milk - [ ] Lemons - [x] Rye flour')).toBe('Oat milk, Lemons, Rye flour')
+  expect(plainPreview('## Agenda 1. Release dates 2. Hiring for the spring > Keep the scope small enough to ship.')).toBe(
+    'Agenda 1. Release dates 2. Hiring for the spring, Keep the scope small enough to ship.',
+  )
+  expect(plainPreview('Goal: reliable readings **through winter**. The sensor')).toBe('Goal: reliable readings through winter. The sensor')
+  expect(plainPreview('Starter fed at 8, ready by 2. - 500 g flour')).toBe('Starter fed at 8, ready by 2. 500 g flour')
+  expect(plainPreview('See the [tram map](https://www.carris.pt) before going.')).toBe('See the tram map before going.')
+  expect(plainPreview('![Radiation shield](attachments/a.png) Mounted *north* with `code`')).toBe('Radiation shield Mounted north with code')
+  expect(plainPreview('- [ ] *The Overstory* - [ ] *Braiding Sweetgrass* - [x] *Piranesi*')).toBe('The Overstory, Braiding Sweetgrass, Piranesi')
+  // text that only looks like a mark stays
+  expect(plainPreview('Tram 28 from Martim Moniz; 3 * 4 = 12; snake_case_name')).toBe('Tram 28 from Martim Moniz; 3 * 4 = 12; snake_case_name')
+  expect(plainPreview('```swift let x = 1 ``` after')).toBe('let x = 1 after')
+  expect(plainPreview('')).toBe('')
 })

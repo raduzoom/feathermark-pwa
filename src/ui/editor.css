@@ -1,5 +1,5 @@
-/* The open note (universal/design/handoff/screens/web-shell-redesign.dc.html: overline breadcrumb, a grouped pill
-   toolbar with More, 44 px serif title, 560 px measure). */
+/* The open note (universal/design/handoff/screens/web-shell-redesign.dc.html: dotted breadcrumb, flat toolbar with
+   icons, the View segment and More, 44 px serif title, 680 px measure, centred). */
 .editor-body {
   display: flex;
   flex-direction: column;
@@ -9,17 +9,29 @@
 .editor-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   flex-wrap: wrap;
-  gap: var(--space-16);
-  padding: var(--space-16) var(--space-16) 0 var(--space-40);
+  gap: var(--space-8);
+  padding: var(--space-16) var(--space-24) 0;
 }
+/* "● Projects › Work" */
 .crumb {
-  font-size: var(--type-ui-overline-size);
-  font-weight: var(--type-ui-overline-weight);
-  letter-spacing: 1.6px;
-  text-transform: uppercase;
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+  margin: 0;
+  padding: 0 var(--space-8);
+  font-size: var(--type-ui-label-size);
   color: var(--c-text-secondary);
+}
+.crumb > span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+.crumb-here {
+  color: var(--c-text-primary);
 }
 .back-button {
   display: none;
@@ -28,7 +40,7 @@
   color: var(--c-accent);
   font-weight: 600;
 }
-/* The toolbar's groups: pin, tags and notebook in one pill; Markdown and More each in their own. */
+/* The toolbar: flat tools with icons, the View segment, then More */
 .toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -38,24 +50,56 @@
 .tool-group {
   display: flex;
   gap: var(--space-4);
-  padding: var(--space-4);
-  border-radius: 20px;
-  background: var(--c-surface-raised);
+}
+.icon {
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.icon-dots {
+  flex-shrink: 0;
+  fill: currentColor;
 }
 .tool {
-  height: var(--h-toolbar-desktop);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+  height: var(--h-button-large);
   padding: 0 12px;
-  border-radius: var(--radius-row);
+  border-radius: var(--radius-control);
   font-size: var(--type-ui-label-size);
 }
 .tool:hover {
-  background: var(--c-accent-tint);
+  background: var(--c-line-hairline);
 }
 .tool[aria-pressed='true'],
 .tool[aria-expanded='true'] {
   background: var(--c-accent-tint);
   color: var(--c-accent-tint-on-tint);
-  font-weight: 600;
+}
+.segment {
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--radius-control);
+  box-shadow: inset 0 0 0 1px var(--c-line-hairline);
+  color: var(--c-text-secondary);
+}
+.segment-option {
+  height: var(--h-toolbar-desktop);
+  padding: 0 12px;
+  border-radius: var(--radius-input);
+  font-size: var(--type-ui-label-size);
+}
+.segment-option:hover {
+  color: var(--c-text-primary);
+}
+.segment-option[aria-pressed='true'] {
+  background: var(--c-surface-raised);
+  color: var(--c-text-primary);
 }
 .trash-banner {
   display: flex;
@@ -63,7 +107,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-16);
-  margin: var(--space-16) var(--space-16) 0 var(--space-40);
+  margin: var(--space-16) var(--space-24) 0;
   padding: var(--space-16);
   border-radius: var(--radius-card);
   background: var(--c-warning-banner);
@@ -83,10 +127,12 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: var(--space-16) var(--space-40) var(--space-40);
+  padding: var(--space-32) var(--space-24) var(--space-48);
 }
+/* the canvas's measure: up to 680 px, centred in the note area */
 .editor-page {
-  max-width: 560px;
+  max-width: var(--layout-measure);
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
 }
@@ -108,7 +154,7 @@
   outline: none;
 }
 .edited {
-  margin: var(--space-8) 0 var(--space-16);
+  margin: var(--space-8) 0 var(--space-32);
   font-size: var(--type-ui-meta-size);
   color: var(--c-text-secondary);
 }

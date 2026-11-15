@@ -6,7 +6,7 @@ import type { Notebook, View } from '../core/library/types.ts'
 import type { AppModel } from '../model/app-model.ts'
 import * as act from './actions.ts'
 import { MenuButton, type MenuItem } from './Menu.tsx'
-import { tint } from './notebook-tint.ts'
+import { notebookInfo } from './notebook-tint.ts'
 
 /** Tags unfolded by hand. In memory only: folded again after a reload. */
 const tagsOpen = signal(false)
@@ -54,7 +54,7 @@ export function LibraryPanel({ model, onNavigate }: { model: AppModel; onNavigat
   }
 
   const viewRow = (view: View & { kind: keyof typeof ICONS }, label: string, count: number | null, menu?: () => MenuItem[]) => (
-    <li class="lib-item">
+    <li class={menu ? 'lib-item has-menu' : 'lib-item'}>
       <button
         type="button"
         class="lib-row"
@@ -94,6 +94,7 @@ export function LibraryPanel({ model, onNavigate }: { model: AppModel; onNavigat
   ]
 
   const tags = model.tags.value
+  const info = notebookInfo(model.notebooks.value)
   // shown while unfolded by hand, or while a tag is the view, so the selected row never hides
   const tagsShown = tagsOpen.value || selection.kind === 'tag'
 
@@ -119,12 +120,14 @@ export function LibraryPanel({ model, onNavigate }: { model: AppModel; onNavigat
             Notebooks
           </h3>
           <button type="button" class="lib-add" aria-label="New notebook" title="New notebook" onClick={() => act.newNotebook(model, null)}>
-            +
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" class="lib-icon">
+              <path d="M8 3v10M3 8h10" />
+            </svg>
           </button>
         </div>
         <ul class="lib-list" aria-labelledby="notebooks-heading">
           {notebookTree(model.notebooks.value).map(({ nb, depth }) => (
-            <li class="lib-item" key={nb.id} data-depth={Math.min(depth, 6)}>
+            <li class="lib-item has-menu" key={nb.id} data-depth={Math.min(depth, 6)}>
               <button
                 type="button"
                 class="lib-row"
@@ -132,7 +135,7 @@ export function LibraryPanel({ model, onNavigate }: { model: AppModel; onNavigat
                 aria-current={sameView(selection, { kind: 'notebook', id: nb.id }) ? 'page' : undefined}
                 onClick={() => go({ kind: 'notebook', id: nb.id })}
               >
-                {depth === 0 && <span class="nb-dot lib-dot" data-tint={tint(nb.id)} aria-hidden="true" />}
+                {depth === 0 && <span class="nb-dot lib-dot" data-tint={info.get(nb.id)?.tint ?? 0} aria-hidden="true" />}
                 <span class="lib-name">{nb.name}</span>
                 {counts.notebooks.get(nb.id) ? <span class="lib-count">{counts.notebooks.get(nb.id)}</span> : null}
               </button>
@@ -141,6 +144,7 @@ export function LibraryPanel({ model, onNavigate }: { model: AppModel; onNavigat
           ))}
         </ul>
 
+        {/* the whole row folds and unfolds; its count sits in the counts column. "New tag" is inside the open panel */}
         <div class="lib-section lib-section-tags">
           <button
             type="button"
@@ -151,38 +155,32 @@ export function LibraryPanel({ model, onNavigate }: { model: AppModel; onNavigat
             onClick={() => (tagsOpen.value = !tagsShown)}
           >
             <span class="overline">Tags</span>
-            {tags.length > 0 && <span class="lib-count">{tags.length}</span>}
-            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" class="lib-icon lib-chevron">
-              <path d="m6 4 4 4-4 4" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            class="lib-add"
-            aria-label="New tag"
-            title="New tag"
-            onClick={() => act.newTag(model, () => (tagsOpen.value = true))}
-          >
-            +
+            {tags.length > 0 && (
+              <span class="lib-count lib-fold-count">
+                <span class="lib-fold-dot" aria-hidden="true" />
+                {tags.length}
+              </span>
+            )}
           </button>
         </div>
-        <ul class="lib-list" id="library-tags" aria-label="Tags" hidden={!tagsShown}>
+        {/* tags as chips; each keeps its menu, shown on hover or focus */}
+        <ul class="lib-chips" id="library-tags" aria-label="Tags" hidden={!tagsShown}>
           {tagsShown &&
             tags.map((tag) => (
-              <li class="lib-item" key={tag.id}>
+              <li class="lib-chip-item" key={tag.id}>
                 <button
                   type="button"
-                  class="lib-row"
+                  class="lib-chip"
                   aria-label={`#${tag.name}`}
                   aria-current={sameView(selection, { kind: 'tag', id: tag.id }) ? 'page' : undefined}
                   onClick={() => go({ kind: 'tag', id: tag.id })}
                 >
-                  <span class="lib-name">#{tag.name}</span>
+                  #{tag.name}
                 </button>
                 <MenuButton
                   label="⋯"
                   ariaLabel={`More for #${tag.name}`}
-                  class="lib-more"
+                  class="lib-chip-more"
                   items={() => [
                     { label: 'Rename…', onSelect: () => act.renameTag(model, tag.id, tag.name) },
                     'separator',
@@ -191,6 +189,16 @@ export function LibraryPanel({ model, onNavigate }: { model: AppModel; onNavigat
                 />
               </li>
             ))}
+          {tagsShown && (
+            <li class="lib-chip-item lib-chip-add-item">
+              <button type="button" class="lib-chip lib-chip-add" aria-label="New tag" onClick={() => act.newTag(model, () => (tagsOpen.value = true))}>
+                <svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" class="lib-icon">
+                  <path d="M8 3v10M3 8h10" />
+                </svg>
+                New tag
+              </button>
+            </li>
+          )}
         </ul>
 
         <ul class="lib-list lib-foot">

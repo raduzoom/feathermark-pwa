@@ -3,7 +3,7 @@
 import type { ComponentChildren } from 'preact'
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import type { AppModel, Row } from '../model/app-model.ts'
-import { listDate, rowGroup, rowLabel, trashMeta, type RowGroup } from '../model/format.ts'
+import { listDate, noteCount, plainPreview, rowGroup, rowLabel, trashMeta, type RowGroup } from '../model/format.ts'
 import * as act from './actions.ts'
 import { firstItem, MenuList, type MenuItem } from './Menu.tsx'
 import { notebookInfo } from './notebook-tint.ts'
@@ -102,7 +102,10 @@ export function NoteList({ model, onOpen, onEnter }: { model: AppModel; onOpen: 
   return (
     <div class="list-body">
       <div class="list-head">
-        <h2 class="list-title">{searching ? 'Search' : model.title.value}</h2>
+        <div class="list-title-row">
+          <h2 class="list-title">{searching ? 'Search' : model.title.value}</h2>
+          <span class="list-count">{noteCount(rows.length)}</span>
+        </div>
         <input
           type="search"
           class="list-search"
@@ -149,7 +152,7 @@ export function NoteList({ model, onOpen, onEnter }: { model: AppModel; onOpen: 
                   onKeyDown={(e) => onKey(e, row, i)}
                 >
                   <span class="row-title">{n.title.trim() === '' ? 'Untitled' : n.title}</span>
-                  {row.snippet !== null ? <Snippet row={row} /> : n.preview !== '' && <span class="row-preview">{n.preview}</span>}
+                  {row.snippet !== null ? <Snippet row={row} /> : plainPreview(n.preview) !== '' && <span class="row-preview">{plainPreview(n.preview)}</span>}
                   <span class="row-meta">
                     {n.trashedAt !== null ? (
                       trashMeta(n.trashedAt, 30, now)

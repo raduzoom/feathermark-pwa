@@ -49,6 +49,23 @@ test('markers hide and show with the caret', async ({ page }) => {
   await expect(firstLine(page)).toHaveText('# Title')
 })
 
+test('markers hide while the editor is not focused', async ({ page }) => {
+  await newNoteWith(page, 'Unfocused', '# Title\n\nsee **bold** here')
+  await page.keyboard.press('ControlOrMeta+Home')
+  await expect(firstLine(page)).toHaveText('# Title')
+  // focus leaves for the list: no caret, so the heading's "# " hides
+  await list(page).getByRole('option', { name: /^Unfocused/ }).focus()
+  await expect(firstLine(page)).toHaveText('Title')
+  // a note opened from the list shows no markers either
+  await open(page, 'Groceries')
+  await open(page, 'Unfocused')
+  await expect(firstLine(page)).toHaveText('Title')
+  // focus back: the caret's line shows them again
+  await body(page).focus()
+  await page.keyboard.press('ControlOrMeta+Home')
+  await expect(firstLine(page)).toHaveText('# Title')
+})
+
 test('Return continues a list', async ({ page }) => {
   await newNoteWith(page, 'List', '- one')
   await page.keyboard.press('Enter')
@@ -138,11 +155,16 @@ test('clicking a link keeps the demo', async ({ page, leaks }) => {
 test('Markdown shows the raw text', async ({ page }) => {
   await newNoteWith(page, 'Raw', '# Title\n\nbody')
   await expect(firstLine(page)).toHaveText('Title')
-  const button = toolbar(page).getByRole('button', { name: 'Markdown' })
+  const view = toolbar(page).getByRole('group', { name: 'View' })
+  const button = view.getByRole('button', { name: 'Markdown' })
+  await expect(view.getByRole('button', { name: 'Preview' })).toHaveAttribute('aria-pressed', 'true')
   await button.click()
   await expect(button).toHaveAttribute('aria-pressed', 'true')
   await expect(firstLine(page)).toHaveText('# Title')
+  // pressing it again keeps Markdown; Preview goes back
   await button.click()
+  await expect(firstLine(page)).toHaveText('# Title')
+  await view.getByRole('button', { name: 'Preview' }).click()
   await expect(button).toHaveAttribute('aria-pressed', 'false')
   await expect(firstLine(page)).toHaveText('Title')
 })

@@ -2,9 +2,16 @@
    glass sheet holding the list and the note, placed by CSS grid areas; the drawer and the bottom bar below 1000 px.
    Widths: library column from 1000 px; a drawer library from 640 to 999 px; one column below 640 px. */
 
+/* The canvas's 12 px control radius (buttons, fields, menus); no token of its own yet, so radius.thumbnail's value */
+:root {
+  --radius-control: var(--radius-thumbnail);
+}
+
 .page {
   position: relative;
   height: 100dvh;
+  font-size: 15px;
+  line-height: 1.4;
   min-height: 640px;
   overflow: hidden;
   display: grid;
@@ -117,11 +124,11 @@
   border-radius: var(--radius-panel);
   box-shadow: inset 0 0 0 1px var(--c-line-hairline);
 }
-/* One glass sheet: the list and the open note */
+/* One glass sheet: the list and the open note (neutral glass, as the canvas) */
 .sheet {
   flex: 1;
   min-height: 0;
-  background: var(--c-glass-editor);
+  background: var(--c-glass-sidebar);
   -webkit-backdrop-filter: blur(30px);
   backdrop-filter: blur(30px);
 }
@@ -129,8 +136,10 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  flex: 1 1 280px;
-  max-width: 340px;
+  flex: 0 1 var(--layout-list-width-basis);
+  min-width: var(--layout-list-width-min);
+  max-width: var(--layout-list-width-max);
+  background: var(--c-glass-list-pane);
   box-shadow: inset -1px 0 0 var(--c-line-hairline);
 }
 .editor {
@@ -155,7 +164,7 @@
   outline: none;
 }
 .library-top {
-  padding: var(--space-16) var(--space-8);
+  padding: var(--space-8) var(--space-8) var(--space-24);
 }
 /* The library's "New note": the screen's one filled button on the web (universal/AGENTS.md "Visual design"). */
 .new-note {
@@ -165,10 +174,13 @@
   gap: var(--space-8);
   width: 100%;
   height: var(--h-button-large);
-  border-radius: var(--radius-row);
+  border-radius: var(--radius-control);
   background: var(--c-action-primary);
   color: var(--c-action-primary-on-primary);
   font-weight: 600;
+}
+.new-note:hover {
+  filter: brightness(1.08);
 }
 .new-note .lib-icon {
   stroke-width: 2;
@@ -195,7 +207,7 @@
 @media (min-width: 1000px) {
   .page,
   .page[data-demo='true'] {
-    grid-template-columns: 232px minmax(0, 1fr);
+    grid-template-columns: var(--layout-library-width) minmax(0, 1fr);
     grid-template-rows: 56px minmax(0, 1fr) auto;
     grid-template-areas:
       'appbar stage'
@@ -243,8 +255,7 @@
     position: fixed;
     inset: 0;
     z-index: 1;
-    background: var(--c-text-primary);
-    opacity: 0.2;
+    background: var(--c-scrim);
   }
   .menu-button {
     display: inline-flex;
@@ -258,7 +269,7 @@
     top: var(--space-16);
     bottom: var(--space-16);
     left: var(--space-16);
-    width: 280px;
+    width: 280px; /* design-system: not a layout size (the drawer, not the list) */
     max-width: calc(100vw - 2 * var(--space-16));
     border-radius: var(--radius-panel);
     box-shadow: inset 0 0 0 1px var(--c-line-hairline);
@@ -286,6 +297,7 @@
 @media (max-width: 639px) {
   .notes {
     flex: 1 1 auto;
+    min-width: 0;
     max-width: none;
     box-shadow: none;
   }

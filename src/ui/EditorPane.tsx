@@ -6,7 +6,9 @@ import { editedLine } from '../model/format.ts'
 import * as act from './actions.ts'
 import { downloadOpenNote } from './download.ts'
 import { notebookTree } from './LibraryPanel.tsx'
+import { DotsIcon, Icon } from './icons.tsx'
 import { MenuButton } from './Menu.tsx'
+import { notebookInfo } from './notebook-tint.ts'
 import { NoteEditor } from './NoteEditor.tsx'
 
 export function EditorPane({ model, onBack }: { model: AppModel; onBack: () => void }) {
@@ -38,6 +40,7 @@ export function EditorPane({ model, onBack }: { model: AppModel; onBack: () => v
     path.unshift(nb.name)
     id = nb.parentId
   }
+  const dot = note.notebookId ? notebookInfo(model.notebooks.value).get(note.notebookId)?.tint : undefined
 
   return (
     <div class="editor-body">
@@ -45,7 +48,16 @@ export function EditorPane({ model, onBack }: { model: AppModel; onBack: () => v
         <button type="button" class="back-button" onClick={onBack}>
           Back to notes
         </button>
-        <span class="crumb">{path.join(' · ')}</span>
+        {/* "● Projects › Work": the notebook's dot, then its path, the note's own notebook last */}
+        <p class="crumb">
+          {path.length > 0 && <span class="nb-dot" data-tint={dot} aria-hidden="true" />}
+          {path.map((name, i) => (
+            <span key={i} class={i === path.length - 1 ? 'crumb-here' : undefined}>
+              {i > 0 && <Icon name="chevron" size={12} />}
+              {name}
+            </span>
+          ))}
+        </p>
         {!trashed && <Toolbar model={model} note={note} />}
       </div>
       {trashed && (
@@ -97,15 +109,24 @@ export function EditorPane({ model, onBack }: { model: AppModel; onBack: () => v
 }
 
 function Toolbar({ model, note }: { model: AppModel; note: Note }) {
-  // What the note is (pin, tags, notebook), then how it shows, then the rare and destructive actions under More.
+  // What the note is (pin, tags, notebook), then how it shows (Preview or Markdown), then the rare and destructive
+  // actions under More.
+  const raw = model.editorRaw.value
   return (
     <div role="toolbar" aria-label="Note" class="toolbar">
       <div class="tool-group">
-        <button type="button" class="tool" aria-pressed={note.pinned} onClick={() => model.togglePin(note.id)}>
-          Pinned
+        {/* named "Pinned" with its pressed state; it reads "Pin" until pressed (the name holds the visible label) */}
+        <button type="button" class="tool" aria-label="Pinned" aria-pressed={note.pinned} onClick={() => model.togglePin(note.id)}>
+          <Icon name="pin" />
+          {note.pinned ? 'Pinned' : 'Pin'}
         </button>
         <MenuButton
-          label="Tags"
+          label={
+            <>
+              <Icon name="tag" />
+              Tags
+            </>
+          }
           ariaLabel="Tags"
           class="tool"
           items={() => [
@@ -116,11 +137,16 @@ function Toolbar({ model, note }: { model: AppModel; note: Note }) {
               onSelect: () => model.toggleTag(note.id, t.id),
             })),
             'separator',
-            { label: 'New tag…', onSelect: () => act.newTag(model, (id) => model.toggleTag(note.id, id)) },
+            { label: 'New tag…', icon: <Icon name="plus" />, onSelect: () => act.newTag(model, (id) => model.toggleTag(note.id, id)) },
           ]}
         />
         <MenuButton
-          label="Move"
+          label={
+            <>
+              <Icon name="move" />
+              Move
+            </>
+          }
           ariaLabel="Move"
           class="tool"
           items={() => [
@@ -135,24 +161,30 @@ function Toolbar({ model, note }: { model: AppModel; note: Note }) {
           ]}
         />
       </div>
-      <div class="tool-group">
-        <button type="button" class="tool" aria-pressed={model.editorRaw.value} onClick={() => model.toggleRaw()}>
+      <div role="group" aria-label="View" class="segment">
+        <button type="button" class="segment-option" aria-pressed={!raw} onClick={() => raw && model.toggleRaw()}>
+          Preview
+        </button>
+        <button type="button" class="segment-option" aria-pressed={raw} onClick={() => !raw && model.toggleRaw()}>
           Markdown
         </button>
       </div>
-      <div class="tool-group">
-        <MenuButton
-          label="More"
-          ariaLabel="More"
-          class="tool"
-          items={() => [
-            // a body that hasn't arrived would be saved as an empty file
-            { label: 'Download .md', disabled: model.openNoteLoading.value, onSelect: () => downloadOpenNote(model) },
-            'separator',
-            { label: 'Move to Trash', danger: true, onSelect: () => model.trashWithUndo(note.id) },
-          ]}
-        />
-      </div>
+      <MenuButton
+        label={
+          <>
+            More
+            <DotsIcon />
+          </>
+        }
+        ariaLabel="More"
+        class="tool"
+        items={() => [
+          // a body that hasn't arrived would be saved as an empty file
+          { label: 'Download .md', icon: <Icon name="download" />, disabled: model.openNoteLoading.value, onSelect: () => downloadOpenNote(model) },
+          'separator',
+          { label: 'Move to Trash', icon: <Icon name="trash" />, danger: true, onSelect: () => model.trashWithUndo(note.id) },
+        ]}
+      />
     </div>
   )
 }

@@ -41,6 +41,9 @@
   list-style: none;
   margin: 0;
   padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
 }
 .lib-item {
   position: relative;
@@ -53,8 +56,8 @@
   display: flex;
   align-items: center;
   gap: var(--space-8);
-  height: 36px;
-  padding: 0 var(--space-32) 0 var(--space-8);
+  height: var(--h-button-large);
+  padding: 0 var(--space-8);
   border-radius: var(--radius-input);
   text-align: left;
 }
@@ -66,7 +69,7 @@
 .lib-item[data-depth='5'] .lib-row { padding-left: 96px; }
 .lib-item[data-depth='6'] .lib-row { padding-left: 112px; }
 .lib-row:hover {
-  background: var(--c-surface-raised);
+  background: var(--c-line-hairline);
 }
 .lib-row[aria-current='page'] {
   background: var(--c-accent-tint);
@@ -81,28 +84,36 @@
   white-space: nowrap;
 }
 .lib-count {
+  font-size: var(--type-ui-label-size);
   color: var(--c-text-secondary);
   font-variant-numeric: tabular-nums;
 }
 .lib-row[aria-current='page'] .lib-count {
   color: inherit;
 }
+/* One right-hand column for counts, "+" and ⋯: everything ends 8 px in from the row's edge. A row's ⋯ takes its
+   count's place on hover or keyboard focus. */
 .lib-item .menu-anchor {
   position: absolute;
-  right: var(--space-4);
+  right: 0;
+}
+.lib-item.has-menu:hover .lib-count,
+.lib-item.has-menu:focus-within .lib-count {
+  visibility: hidden;
 }
 .lib-more,
 .lib-add {
-  width: 28px;
-  height: 28px;
+  width: var(--h-toolbar-desktop);
+  height: var(--h-toolbar-desktop);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: var(--radius-input);
   color: var(--c-text-secondary);
   opacity: 0;
 }
 .lib-add {
   opacity: 1;
-  font-size: 18px;
-  line-height: 1;
 }
 .lib-item:hover .lib-more,
 .lib-more:focus-visible,
@@ -111,12 +122,20 @@
 }
 .lib-more:hover,
 .lib-add:hover {
-  background: var(--c-surface-raised);
+  background: var(--c-line-hairline);
   color: var(--c-text-primary);
 }
+/* no hover: ⋯ always shows, so rows keep room for it beside the count */
 @media (hover: none) {
   .lib-more {
     opacity: 1;
+  }
+  .lib-item.has-menu .lib-row {
+    padding-right: var(--space-32);
+  }
+  .lib-item.has-menu:hover .lib-count,
+  .lib-item.has-menu:focus-within .lib-count {
+    visibility: visible;
   }
 }
 .lib-section {
@@ -124,19 +143,23 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
-  margin: var(--space-16) var(--space-4) var(--space-4) var(--space-8);
+  min-height: var(--h-toolbar-desktop);
+  margin: var(--space-24) 0 var(--space-4) var(--space-8);
 }
 .lib-section-tags {
   margin-left: 0;
 }
-/* the Tags heading is a button: name, count, chevron (turned down while open) */
+.lib-add .lib-icon {
+  color: var(--c-text-secondary);
+}
+/* the Tags heading is a button: the name, then the count (with a small dot) in the counts column */
 .lib-fold {
   flex: 1;
   min-width: 0;
   display: flex;
   align-items: center;
   gap: var(--space-8);
-  height: 28px;
+  height: var(--h-toolbar-desktop);
   padding: 0 var(--space-8);
   border-radius: var(--radius-input);
 }
@@ -145,19 +168,87 @@
   text-align: left;
 }
 .lib-fold:hover {
-  background: var(--c-surface-raised);
+  background: var(--c-line-hairline);
 }
-.lib-chevron {
+/* Tags as chips, each with its ⋯ menu inside it on hover or focus */
+.lib-chips {
+  list-style: none;
+  margin: var(--space-4) 0 0;
+  padding: 0 var(--space-8);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+.lib-chips[hidden] {
+  display: none;
+}
+.lib-chip-item {
+  display: inline-flex;
+  align-items: center;
+  height: var(--h-toolbar-desktop);
+  border-radius: var(--radius-pill);
+  box-shadow: inset 0 0 0 1px var(--c-line-hairline);
+  font-size: var(--type-ui-label-size);
+}
+.lib-chip {
+  height: 100%;
+  padding: 0 12px;
+  border-radius: var(--radius-pill);
+}
+.lib-chip-item:hover,
+.lib-chip-item:focus-within {
+  background: var(--c-line-hairline);
+}
+.lib-chip[aria-current='page'] {
+  background: var(--c-accent-tint);
+  color: var(--c-accent-tint-on-tint);
+  font-weight: 600;
+}
+.lib-chip-item .menu-anchor {
+  display: none;
+}
+.lib-chip-item:hover .menu-anchor,
+.lib-chip-item:focus-within .menu-anchor {
+  display: inline-flex;
+}
+/* "New tag", last in the open panel */
+.lib-chip-add-item {
+  box-shadow: inset 0 0 0 1px var(--c-action-outline);
   color: var(--c-text-secondary);
-  transition: transform 160ms ease;
 }
-.lib-fold[aria-expanded='true'] .lib-chevron {
-  transform: rotate(90deg);
+.lib-chip-add {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 0 12px 0 var(--space-8);
 }
-@media (prefers-reduced-motion: reduce) {
-  .lib-chevron {
-    transition: none;
+.lib-chip-add-item:hover,
+.lib-chip-add-item:focus-within {
+  color: var(--c-text-primary);
+}
+.lib-chip-more {
+  width: 24px;
+  height: 24px;
+  margin-right: var(--space-4);
+  border-radius: var(--radius-pill);
+  color: var(--c-text-secondary);
+}
+@media (hover: none) {
+  .lib-chip-item .menu-anchor {
+    display: inline-flex;
   }
+}
+.lib-fold-count {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+/* a small centred dot before the tag count */
+.lib-fold-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: currentColor;
 }
 .overline {
   margin: 0;

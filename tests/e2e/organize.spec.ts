@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
+import { openTags } from './support/tags'
 
 const library = (page: Page) => page.getByRole('navigation', { name: 'Library' })
 const list = (page: Page) => page.getByRole('listbox', { name: 'Notes' })
@@ -56,11 +57,15 @@ test("a notebook can't move inside its own sub-notebook", async ({ page }) => {
 })
 
 test('create, rename and delete a tag', async ({ page }) => {
+  await openTags(page)
   await library(page).getByRole('button', { name: 'New tag', exact: true }).click()
   await nameDialog(page, 'New tag', 'garden', 'Create')
+  await library(page).getByRole('button', { name: '#garden', exact: true }).hover()
   await more(page, '#garden').click()
   await page.getByRole('menuitem', { name: 'Rename…' }).click()
   await nameDialog(page, 'Rename tag', 'outdoors', 'Rename')
+  // a tag chip shows its menu button on hover or keyboard focus
+  await library(page).getByRole('button', { name: '#outdoors', exact: true }).focus()
   await more(page, '#outdoors').click()
   await page.getByRole('menuitem', { name: 'Delete tag…' }).click()
   const dialog = page.getByRole('dialog', { name: 'Delete the tag “outdoors”?' })
@@ -70,6 +75,7 @@ test('create, rename and delete a tag', async ({ page }) => {
 })
 
 test('a duplicate tag name is refused with its message', async ({ page }) => {
+  await openTags(page)
   await library(page).getByRole('button', { name: 'New tag', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'New tag' })
   await dialog.getByRole('textbox', { name: 'Name' }).fill('Reading')

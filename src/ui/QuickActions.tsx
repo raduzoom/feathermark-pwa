@@ -14,6 +14,11 @@ export const quickActionsOpen = signal(false)
 
 const NOTES_SHOWN = 6
 
+/** Opens the note toolbar's Tags or Move menu, once quick actions have gone (the page behind a modal is inert). */
+function openToolbarMenu(name: 'Tags' | 'Move') {
+  setTimeout(() => document.querySelector<HTMLElement>(`[role="toolbar"][aria-label="Note"] [aria-label="${name}"]`)?.click(), 0)
+}
+
 type Section = 'This note' | 'Library' | 'Notes'
 type Choice = { id: string; section: Section; label: string; hint?: string; run: () => void }
 
@@ -56,6 +61,14 @@ function QuickActionsDialog({ model, newNote, openNote }: { model: AppModel; new
   const actions: Choice[] = []
   if (note && note.trashedAt === null && !model.readOnly.value) {
     actions.push({ id: 'qa-pin', section: 'This note', label: note.pinned ? 'Unpin note' : 'Pin note', run: () => model.togglePin(note.id) })
+    // the typed words searched too, and may have hidden the note: show it again, then open its toolbar's menu
+    const toolbarMenu = (name: 'Tags' | 'Move') => () => {
+      model.setSearch('')
+      model.selectNote(note.id)
+      openToolbarMenu(name)
+    }
+    actions.push({ id: 'qa-tag', section: 'This note', label: 'Add a tag', run: toolbarMenu('Tags') })
+    actions.push({ id: 'qa-move', section: 'This note', label: 'Move to a notebook', run: toolbarMenu('Move') })
     // a body that hasn't arrived would be saved as an empty file
     if (!model.openNoteLoading.value) actions.push({ id: 'qa-download', section: 'This note', label: 'Download .md', run: () => downloadOpenNote(model) })
     actions.push({ id: 'qa-trash', section: 'This note', label: 'Move to Trash', run: () => model.trashWithUndo(note.id) })
@@ -64,6 +77,7 @@ function QuickActionsDialog({ model, newNote, openNote }: { model: AppModel; new
     { id: 'qa-new-note', section: 'Library', label: 'New note', hint: 'Alt+N', run: newNote },
     { id: 'qa-new-notebook', section: 'Library', label: 'New notebook', run: () => act.newNotebook(model, null) },
     { id: 'qa-new-tag', section: 'Library', label: 'New tag', run: () => act.newTag(model) },
+    { id: 'qa-recent', section: 'Library', label: 'Go to Recent', run: () => model.select({ kind: 'recent' }) },
   )
   const choices: Choice[] = actions.filter((a) => a.label.toLowerCase().includes(query))
   if (query !== '')
@@ -137,6 +151,12 @@ function QuickActionsDialog({ model, newNote, openNote }: { model: AppModel; new
           }}
           onKeyDown={onKey}
         />
+        <button type="button" class="qa-esc" aria-label="Close (esc)" tabIndex={-1} onClick={() => {
+          model.setSearch('')
+          close()
+        }}>
+          esc
+        </button>
       </div>
       <div id="qa-list" role="listbox" aria-label="Quick actions" class="qa-list">
         {sections.map((section) => {
@@ -169,6 +189,7 @@ function QuickActionsDialog({ model, newNote, openNote }: { model: AppModel; new
           )
         })}
       </div>
+      <p class="qa-foot">Type to search notes. Use the arrows and Return to run the highlighted one.</p>
     </dialog>
   )
 }

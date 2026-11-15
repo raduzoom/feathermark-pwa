@@ -8,29 +8,46 @@
   min-height: 0;
 }
 .list-head {
-  padding: var(--space-24) var(--space-24) var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+  padding: var(--space-24) var(--space-16) var(--space-16);
+}
+.list-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-8);
+  padding: 0 var(--space-8);
 }
 .list-title {
-  margin: 0 0 var(--space-8);
+  flex-grow: 1;
+  margin: 0;
   font-family: var(--font-serif);
   font-size: var(--type-panel-title-size);
   line-height: var(--type-panel-title-line);
-  font-weight: 700;
+  font-weight: var(--type-panel-title-weight);
+}
+.list-count {
+  font-size: var(--type-ui-label-size);
+  color: var(--c-text-secondary);
 }
 .list-search {
   width: 100%;
-  height: var(--h-chip);
-  min-height: 32px;
-  padding: 0 12px;
+  height: var(--h-input);
+  padding: 0 var(--space-16);
   border: 0;
-  border-radius: var(--radius-pill);
-  background: var(--c-surface-raised);
+  border-radius: var(--radius-control);
+  background: var(--c-line-hairline);
+  box-shadow: inset 0 0 0 1px var(--c-line-hairline);
   color: var(--c-text-primary);
   font: inherit;
   font-size: var(--type-ui-label-size);
 }
+.list-search::placeholder {
+  color: var(--c-text-placeholder);
+}
 .scope-chip {
-  margin: var(--space-8) 0 0;
+  margin: 0;
   font-size: var(--type-ui-meta-size);
   color: var(--c-text-secondary);
 }
@@ -41,12 +58,16 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  padding: var(--space-4) var(--space-8) var(--space-16);
+  padding: 0 var(--space-16) var(--space-24);
 }
+/* groups sit 16 px apart; rows inside 4 px */
 .row-group {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+}
+.row-group + .row-group {
+  margin-top: var(--space-16);
 }
 .row-group-head {
   padding: var(--space-8) var(--space-8) var(--space-4);
@@ -57,11 +78,11 @@
   gap: var(--space-4);
   min-width: 0;
   padding: var(--space-8);
-  border-radius: var(--radius-row);
+  border-radius: var(--radius-control);
   cursor: default;
 }
 .row:hover {
-  background: var(--c-surface-raised);
+  background: var(--c-line-hairline);
 }
 .row[aria-selected='true'] {
   background: var(--c-accent-tint);
@@ -80,7 +101,8 @@
   font-size: var(--type-ui-label-size);
   color: var(--c-text-secondary);
 }
-.row[aria-selected='true'] .row-preview {
+.row[aria-selected='true'] .row-preview,
+.row[aria-selected='true'] .row-meta {
   color: var(--c-text-body);
 }
 .row-preview {

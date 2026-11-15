@@ -264,7 +264,8 @@ function build(view: EditorView): { decorations: DecorationSet; atomic: Decorati
   const text = docText(state)
   const tree = syntaxTree(state)
   const raw = state.facet(rawMode)
-  const sel = state.selection.main
+  // without the focus there is no caret (editor.md "Live preview", web): every marker hides
+  const sel = view.hasFocus ? state.selection.main : { from: -1, to: -1 }
   const seen = new Set<number>()
   const blocks: Block[] = []
   for (const r of view.visibleRanges) {
@@ -291,6 +292,7 @@ const previewPlugin = ViewPlugin.fromClass(
         u.docChanged ||
         u.viewportChanged ||
         u.selectionSet ||
+        u.focusChanged ||
         syntaxTree(u.state) !== syntaxTree(u.startState) ||
         u.state.facet(rawMode) !== u.startState.facet(rawMode) ||
         u.state.facet(attachmentResolver) !== u.startState.facet(attachmentResolver)

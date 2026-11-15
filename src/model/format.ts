@@ -57,6 +57,50 @@ export function noteMeta(s: Pick<NoteSummary, 'modified'>, notebookName: string 
   return notebookName ? `${when} · ${notebookName}` : when
 }
 
+/** "7 notes": the note list's count beside its title. */
+export function noteCount(n: number): string {
+  return n === 1 ? '1 note' : `${n} notes`
+}
+
+const BLOCK_START = /^(#{1,6}|>|[-*+]( \[[ xX]\])?|\d+\.)\s/
+const BLOCK_MARK = /(^|\s)(#{1,6}|>|[-*+] \[[ xX]\]|[-*+])(?=\s)/g
+const SENTENCE_END = /[.,;:!?]$/
+
+/** A row preview (data-model.md "List preview": white space already collapsed) with its Markdown marks dropped, for
+ *  display only: "- [ ] Oat milk - [ ] Lemons" reads "Oat milk, Lemons". The line breaks are gone, so a list or quote
+ *  mark inside the text counts only in a note that starts with a mark, or after a sentence's end; "3 * 4" stays. */
+export function plainPreview(preview: string): string {
+  let out = plainCache.get(preview)
+  if (out === undefined) {
+    // a list of 1,000 rows redraws as a whole: each preview is worked out once
+    if (plainCache.size >= 4000) plainCache.clear()
+    plainCache.set(preview, (out = strip(preview)))
+  }
+  return out
+}
+const plainCache = new Map<string, string>()
+
+function strip(preview: string): string {
+  const blocks = BLOCK_START.test(preview)
+  let s = preview
+    .replace(/```[\w+-]*\s*/g, '')
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+  s = s.replace(BLOCK_MARK, (whole, _space: string, mark: string, at: number, all: string) => {
+    if (at === 0) return ''
+    const before = all.slice(0, at).trimEnd()
+    const marksHere = blocks && (mark.length > 1 || mark === '-' || mark === '>' || mark.startsWith('#'))
+    if (!marksHere && !(SENTENCE_END.test(before) && (mark === '-' || mark === '>'))) return whole
+    return SENTENCE_END.test(before) ? ' ' : ', '
+  })
+  s = s
+    .replace(/(\*\*|__|~~)(\S(?:.*?\S)?)\1/g, '$2')
+    .replace(/\*(\S(?:.*?\S)?)\*/g, '$1')
+    .replace(/(^|\W)_(\S(?:.*?\S)?)_(?=\W|$)/g, '$1$2')
+    .replace(/`([^`]*)`/g, '$1')
+  return s.replace(/\s+/g, ' ').trim()
+}
+
 /** The heading a list row sits under (data-model.md "List groups (web)"). `pinnedFirst`: the view puts pinned notes
  *  first (All, a notebook, a tag). Uses the kept formatters only, so it adds no formatter per row. */
 export type RowGroup = 'Pinned' | 'Today' | 'Yesterday' | 'Earlier'
