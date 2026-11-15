@@ -14,10 +14,10 @@
   flex-direction: column;
   padding: 0 var(--space-8) var(--space-16);
 }
-/* At the foot of the scroll area: the demo card (from 1000 px), Trash, then "Collapse sidebar" last */
+/* Under the scroll area, always in view: the demo card (from 1000 px), Trash, then "Collapse sidebar" last */
 .lib-list.lib-foot {
-  margin-top: auto;
-  padding-top: var(--space-16);
+  flex-shrink: 0;
+  padding: var(--space-8) var(--space-8) var(--space-16);
 }
 .lib-demo {
   margin-bottom: var(--space-8);
@@ -96,8 +96,8 @@
 .lib-row:hover {
   background: var(--c-line-hairline);
 }
+/* The selected view or notebook: bold green text, no fill. The fill is kept for the open note's row alone. */
 .lib-row[aria-current='page'] {
-  background: var(--c-accent-tint);
   color: var(--c-accent-tint-on-tint);
   font-weight: 600;
 }
@@ -313,11 +313,10 @@
   border-radius: 50%;
   background: currentColor;
 }
+/* Section labels (Notebooks, Tags, the list's Pinned / Today / Earlier, quick actions' sections): sentence case */
 .overline {
   margin: 0;
-  font-size: var(--type-ui-overline-size);
-  font-weight: var(--type-ui-overline-weight);
-  letter-spacing: var(--type-ui-overline-tracking);
-  text-transform: uppercase;
+  font-size: var(--type-ui-label-size);
+  font-weight: 600;
   color: var(--c-text-secondary);
 }

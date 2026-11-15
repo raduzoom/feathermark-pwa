@@ -75,10 +75,13 @@
 .tool:hover {
   background: var(--c-line-hairline);
 }
-.tool[aria-pressed='true'],
-.tool[aria-expanded='true'] {
-  background: var(--c-accent-tint);
+/* pressed ("Pinned"): green text and icon, no fill; an open menu's button keeps the hover fill */
+.tool[aria-pressed='true'] {
   color: var(--c-accent-tint-on-tint);
+  font-weight: 600;
+}
+.tool[aria-expanded='true'] {
+  background: var(--c-line-hairline);
 }
 .segment {
   display: flex;
