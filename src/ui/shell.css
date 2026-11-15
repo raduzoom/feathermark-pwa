@@ -309,7 +309,8 @@
     height: var(--h-button-large);
     padding: 0;
   }
-  .page[data-rail='true'] .library-scroll {
+  .page[data-rail='true'] .library-scroll,
+  .page[data-rail='true'] .lib-list.lib-foot {
     padding-left: 0;
     padding-right: 0;
   }

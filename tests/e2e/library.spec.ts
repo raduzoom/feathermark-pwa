@@ -142,6 +142,9 @@ test('the Trash shows deleted notes with their removal date', async ({ page }) =
 
 test('tag chips keep their place when hovered, chosen or their menu opens, and the menu stays in the library', async ({ page }) => {
   await openTags(page)
+  // the foot (demo card, Trash, Collapse sidebar) stays in view, so at 900 px the open chips sit lower in the
+  // scrolling part; bring them fully into view first, or the click itself scrolls them
+  await library(page).getByRole('button', { name: 'New tag', exact: true }).scrollIntoViewIfNeeded()
   const names = ['#hardware', '#ideas', '#reading', '#to-do']
   // to the pixel: bold and regular text can differ by a sliver of one in Chromium
   const boxes = async () =>

@@ -210,27 +210,28 @@ export function LibraryPanel({ model, onNavigate, rail, onToggleRail, beforeTras
           )}
         </ul>
 
-        <ul class="lib-list lib-foot">
-          {/* the demo card, from 1000 px (App.tsx) */}
-          {beforeTrash && <li class="lib-demo">{beforeTrash}</li>}
-          {viewRow({ kind: 'trash' }, 'Trash', counts.trash, () => [
-            { label: 'Empty Trash…', danger: true, onSelect: () => act.emptyTrash(model) },
-          ])}
-          {/* from 1000 px only (below that the library is the drawer); the last button, under Trash */}
-          <li class="lib-item lib-rail-toggle">
-            <button
-              type="button"
-              class="lib-row lib-rail-button"
-              aria-label={rail ? 'Expand sidebar' : 'Collapse sidebar'}
-              title={rail ? 'Expand sidebar' : undefined}
-              onClick={onToggleRail}
-            >
-              {icon('sidebar')}
-              <span class="lib-name">Collapse sidebar</span>
-            </button>
-          </li>
-        </ul>
       </div>
+      {/* outside the scroll area, so an open Tags section never pushes it off the bottom */}
+      <ul class="lib-list lib-foot">
+        {/* the demo card, from 1000 px (App.tsx) */}
+        {beforeTrash && <li class="lib-demo">{beforeTrash}</li>}
+        {viewRow({ kind: 'trash' }, 'Trash', counts.trash, () => [
+          { label: 'Empty Trash…', danger: true, onSelect: () => act.emptyTrash(model) },
+        ])}
+        {/* from 1000 px only (below that the library is the drawer); the last button, under Trash */}
+        <li class="lib-item lib-rail-toggle">
+          <button
+            type="button"
+            class="lib-row lib-rail-button"
+            aria-label={rail ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={rail ? 'Expand sidebar' : undefined}
+            onClick={onToggleRail}
+          >
+            {icon('sidebar')}
+            <span class="lib-name">Collapse sidebar</span>
+          </button>
+        </li>
+      </ul>
     </div>
   )
 }

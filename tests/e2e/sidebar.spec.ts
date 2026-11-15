@@ -76,3 +76,18 @@ test('a rail left on becomes the full drawer when the window narrows', async ({ 
   await expect(library(page).getByRole('button', { name: 'Home', exact: true })).toBeVisible()
   await expect(library(page).getByRole('button', { name: 'Tags', exact: true })).toBeVisible()
 })
+
+test('with Tags open, Trash and Collapse sidebar stay in view at the foot', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/')
+  await library(page).getByRole('button', { name: 'Tags', exact: true }).click()
+  await expect(library(page).getByRole('button', { name: 'New tag', exact: true })).toBeVisible()
+  for (const name of ['Trash', 'Collapse sidebar']) {
+    const box = (await library(page).getByRole('button', { name, exact: true }).boundingBox())!
+    expect(box.y + box.height).toBeLessThanOrEqual(900)
+  }
+  // the notebooks and tags scroll; the foot doesn't
+  const nav = (await library(page).boundingBox())!
+  const collapse = (await library(page).getByRole('button', { name: 'Collapse sidebar' }).boundingBox())!
+  expect(nav.y + nav.height - (collapse.y + collapse.height)).toBeLessThanOrEqual(24)
+})
