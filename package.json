@@ -19,7 +19,7 @@
     "e2e": "playwright test",
     "e2e:cloud": "FEATHER_CLOUD=1 playwright test",
     "e2e:live": "playwright test",
-    "tokens": "node scripts/tokens.ts",
+    "design-system": "node scripts/design-system.ts",
     "spike": "FEATHER_SPIKE=1 vite build && vite preview --port 8431 --strictPort --host"
   },
   "dependencies": {

@@ -21,7 +21,7 @@ step() { echo "== $*"; }
 
 step install;      pnpm install --frozen-lockfile
 step typecheck;    pnpm exec tsc --noEmit
-step tokens;       node scripts/tokens.ts --check
+step "design system"; node scripts/design-system.ts --check
 step unit;         pnpm test
 step build;        pnpm build
 step headers;      test -f dist/_headers
