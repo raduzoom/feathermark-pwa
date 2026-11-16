@@ -1,5 +1,5 @@
 // The open note: breadcrumb, toolbar, title, edited line and the Markdown editor.
-import { useLayoutEffect, useRef } from 'preact/hooks'
+import { useLayoutEffect, useRef, useState } from 'preact/hooks'
 import type { Note } from '../core/library/types.ts'
 import type { AppModel } from '../model/app-model.ts'
 import { editedLine } from '../model/format.ts'
@@ -7,7 +7,7 @@ import * as act from './actions.ts'
 import { downloadOpenNote } from './download.ts'
 import { notebookTree } from './LibraryPanel.tsx'
 import { DotsIcon, Icon } from './icons.tsx'
-import { MenuButton } from './Menu.tsx'
+import { MenuButton, type MenuItem } from './Menu.tsx'
 import { notebookInfo } from './notebook-tint.ts'
 import { NoteEditor } from './NoteEditor.tsx'
 
@@ -108,58 +108,79 @@ export function EditorPane({ model, onBack }: { model: AppModel; onBack: () => v
   )
 }
 
+/** Below this width of the note's head, the labelled toolbar no longer fits on one row, so Tags and Move go under More. */
+const FOLD_BELOW = 560
+
 function Toolbar({ model, note }: { model: AppModel; note: Note }) {
   // What the note is (pin, tags, notebook), then how it shows (Preview or Markdown), then the rare and destructive
   // actions under More.
   const raw = model.editorRaw.value
+  const bar = useRef<HTMLDivElement>(null)
+  const [folded, setFolded] = useState(false)
+  // measured on the note's head, not the window: the sidebar rail and the list's width change the room too
+  useLayoutEffect(() => {
+    const head = bar.current?.parentElement
+    if (!head) return
+    const check = () => setFolded(head.clientWidth < FOLD_BELOW)
+    check()
+    const watch = new ResizeObserver(check)
+    watch.observe(head)
+    return () => watch.disconnect()
+  }, [])
+  const tagItems = (): MenuItem[] => [
+    ...model.tags.value.map((t) => ({
+      label: t.name,
+      kind: 'checkbox' as const,
+      checked: (model.openNote.value?.tagIds ?? []).includes(t.id),
+      onSelect: () => model.toggleTag(note.id, t.id),
+    })),
+    'separator',
+    { label: 'New tag…', icon: <Icon name="plus" />, onSelect: () => act.newTag(model, (id) => model.toggleTag(note.id, id)) },
+  ]
+  const moveItems = (): MenuItem[] => [
+    { label: 'No notebook', kind: 'radio', checked: note.notebookId === null, onSelect: () => model.move(note.id, null) },
+    ...notebookTree(model.notebooks.value).map(({ nb, depth }) => ({
+      label: nb.name,
+      kind: 'radio' as const,
+      depth,
+      checked: note.notebookId === nb.id,
+      onSelect: () => model.move(note.id, nb.id),
+    })),
+  ]
   return (
-    <div role="toolbar" aria-label="Note" class="toolbar">
+    <div ref={bar} role="toolbar" aria-label="Note" class="toolbar">
       <div class="tool-group">
         {/* named "Pinned" with its pressed state; it reads "Pin" until pressed (the name holds the visible label) */}
         <button type="button" class="tool" aria-label="Pinned" aria-pressed={note.pinned} onClick={() => model.togglePin(note.id)}>
           <Icon name="pin" />
           {note.pinned ? 'Pinned' : 'Pin'}
         </button>
-        <MenuButton
-          label={
-            <>
-              <Icon name="tag" />
-              Tags
-            </>
-          }
-          ariaLabel="Tags"
-          class="tool"
-          items={() => [
-            ...model.tags.value.map((t) => ({
-              label: t.name,
-              kind: 'checkbox' as const,
-              checked: (model.openNote.value?.tagIds ?? []).includes(t.id),
-              onSelect: () => model.toggleTag(note.id, t.id),
-            })),
-            'separator',
-            { label: 'New tag…', icon: <Icon name="plus" />, onSelect: () => act.newTag(model, (id) => model.toggleTag(note.id, id)) },
-          ]}
-        />
-        <MenuButton
-          label={
-            <>
-              <Icon name="move" />
-              Move
-            </>
-          }
-          ariaLabel="Move"
-          class="tool"
-          items={() => [
-            { label: 'No notebook', kind: 'radio', checked: note.notebookId === null, onSelect: () => model.move(note.id, null) },
-            ...notebookTree(model.notebooks.value).map(({ nb, depth }) => ({
-              label: nb.name,
-              kind: 'radio' as const,
-              depth,
-              checked: note.notebookId === nb.id,
-              onSelect: () => model.move(note.id, nb.id),
-            })),
-          ]}
-        />
+        {!folded && (
+          <MenuButton
+            label={
+              <>
+                <Icon name="tag" />
+                Tags
+              </>
+            }
+            ariaLabel="Tags"
+            class="tool"
+            items={tagItems}
+          />
+        )}
+        {!folded && (
+          <MenuButton
+            label={
+              <>
+                <Icon name="move" />
+                Move
+              </>
+            }
+            ariaLabel="Move"
+            class="tool"
+            items={moveItems}
+          />
+        )}
       </div>
       <div role="group" aria-label="View" class="segment">
         <button type="button" class="segment-option" aria-pressed={!raw} onClick={() => raw && model.toggleRaw()}>
@@ -179,6 +200,14 @@ function Toolbar({ model, note }: { model: AppModel; note: Note }) {
         ariaLabel="More"
         class="tool"
         items={() => [
+          // folded: the note's tags and notebook come first, each opening its own list
+          ...(folded
+            ? ([
+                { label: 'Tags', icon: <Icon name="tag" />, submenu: tagItems },
+                { label: 'Move', icon: <Icon name="move" />, submenu: moveItems },
+                'separator',
+              ] as MenuItem[])
+            : []),
           // a body that hasn't arrived would be saved as an empty file
           { label: 'Download .md', icon: <Icon name="download" />, disabled: model.openNoteLoading.value, onSelect: () => downloadOpenNote(model) },
           'separator',
