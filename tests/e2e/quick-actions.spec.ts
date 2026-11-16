@@ -1,4 +1,4 @@
-// Quick actions (Ctrl/⌘+K, or the app bar's search button): search all notes or run an action.
+// Quick actions (Ctrl/⌘+K, or the app bar's search button): search all notes, filter by tag or run an action.
 import type { Page } from '@playwright/test'
 import { test, expect } from './fixtures'
 
@@ -16,6 +16,11 @@ test('opens from the app bar button and from Ctrl/⌘+K, with the field focused'
   await page.getByRole('button', { name: 'Search and quick actions' }).click()
   await expect(dialog(page)).toBeVisible()
   await expect(field(page)).toBeFocused()
+  // empty, the field offers every tag as a filter, and no action
+  await expect(dialog(page).getByRole('group', { name: 'Filter by tag' }).getByRole('option').first()).toBeVisible()
+  await expect(dialog(page).getByRole('group', { name: 'This note' })).toHaveCount(0)
+  await expect(dialog(page).getByRole('group', { name: 'Library' })).toHaveCount(0)
+  await page.keyboard.type('n')
   await expect(dialog(page).getByRole('group', { name: 'This note' }).getByRole('option', { name: 'Pin note', exact: true })).toHaveCount(0)
   await expect(dialog(page).getByRole('group', { name: 'This note' }).getByRole('option', { name: 'Unpin note' })).toBeVisible()
   await expect(dialog(page).getByRole('group', { name: 'Library' }).getByRole('option', { name: 'New note', exact: true })).toHaveAttribute('aria-keyshortcuts', 'Alt+N')
@@ -73,9 +78,13 @@ test('arrows move through the choices and wrap; "New note" makes a note', async 
 test('Pin note and Move to Trash act on the open note', async ({ page }) => {
   await list(page).getByRole('option', { name: /^Bread notes/ }).click()
   await page.keyboard.press('ControlOrMeta+k')
+  await page.keyboard.type('pin')
   await dialog(page).getByRole('option', { name: 'Pin note' }).click()
   await expect(dialog(page)).toHaveCount(0)
   await expect(page.getByRole('toolbar', { name: 'Note' }).getByRole('button', { name: 'Pinned' })).toHaveAttribute('aria-pressed', 'true')
+  // the words that named the action don't stay behind as a search
+  await expect(page.getByRole('heading', { level: 2, name: 'Search' })).toHaveCount(0)
+  await expect(page.getByRole('textbox', { name: 'Title' })).toHaveValue('Bread notes')
   await page.keyboard.press('ControlOrMeta+k')
   await page.keyboard.type('trash')
   await page.keyboard.press('Enter')
@@ -128,6 +137,21 @@ test('"#" offers tags as filters: picked, a tag is a chip and the search keeps o
   await expect(page.getByText('Only in #reading')).toBeVisible()
   await page.getByRole('button', { name: 'Search all notes' }).click()
   await expect(list(page).getByRole('option')).not.toHaveCount(1)
+})
+
+test('an empty field lists every tag; picking one makes it a chip and leaves the others out', async ({ page }) => {
+  await page.keyboard.press('ControlOrMeta+k')
+  const filters = dialog(page).getByRole('group', { name: 'Filter by tag' })
+  const all = await filters.getByRole('option').allTextContents()
+  expect(all).toContain('#reading')
+  await filters.getByRole('option', { name: '#reading' }).click()
+  await expect(dialog(page).getByRole('button', { name: 'Remove filter #reading' })).toBeVisible()
+  await expect(field(page)).toBeFocused()
+  await expect(filters).toHaveCount(0)
+  await expect(dialog(page).getByRole('group', { name: 'Go to' }).getByRole('option')).toHaveText(['#reading'])
+  // with the chip gone, the field is empty again and lists every tag
+  await page.keyboard.press('Backspace')
+  await expect(filters.getByRole('option')).toHaveText(all)
 })
 
 test('a typed "#tag " becomes a chip, and Backspace in an empty field removes it', async ({ page }) => {

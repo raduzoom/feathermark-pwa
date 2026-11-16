@@ -1,6 +1,6 @@
 // Quick actions (Ctrl/⌘+K, or the app bar's search button): one field that searches all notes, as the old app bar
-// field did, and filters a short list of actions. Down and Up move, Return runs, Escape closes and clears the search.
-// Words also find tags and notebooks to go to. "#" then a tag's name offers it as a filter: picked (or completed with
+// field did. Empty, it lists the tags to filter by; typed words also find the note and library actions. Down and Up
+// move, Return runs, Escape closes and clears the search. Words also find tags and notebooks to go to. "#" then a tag's name offers it as a filter: picked (or completed with
 // a space) it becomes a chip in the field, and the search keeps only notes with every chip's tag. Backspace in an
 // empty field removes the last chip.
 // A modal <dialog>, so the page behind is inert. It lists note titles, so App closes it whenever the notes leave
@@ -92,24 +92,27 @@ function QuickActionsDialog({ model, newNote, openNote }: { model: AppModel; new
   }
   const chipTags = chips.map((id) => tags.find((t) => t.id === id)).filter((t) => t !== undefined)
 
+  // the actions show only for typed words: an empty field offers the tags, and filtering by tag they'd be in the way
+  const offerActions = !typing && !chips.length && query !== ''
+  const filterBy = (t: { id: string; name: string }, before: string): Choice => ({
+    id: `qa-filter-${t.id}`,
+    section: 'Filter by tag',
+    label: `#${t.name}`,
+    stay: true,
+    run: () => update(before, [...chips, t.id]),
+  })
   const actions: Choice[] = []
-  if (typing || chips.length) {
-    // filtering by tag: the actions would only be in the way
+  if (!offerActions) {
+    // no actions
   } else if (note && note.trashedAt === null && !model.readOnly.value) {
     actions.push({ id: 'qa-pin', section: 'This note', label: note.pinned ? 'Unpin note' : 'Pin note', run: () => model.togglePin(note.id) })
-    // the typed words searched too, and may have hidden the note: show it again, then open its toolbar's menu
-    const toolbarMenu = (name: 'Tags' | 'Move') => () => {
-      model.setSearch('')
-      model.selectNote(note.id)
-      openToolbarMenu(name)
-    }
-    actions.push({ id: 'qa-tag', section: 'This note', label: 'Add a tag', run: toolbarMenu('Tags') })
-    actions.push({ id: 'qa-move', section: 'This note', label: 'Move to a notebook', run: toolbarMenu('Move') })
+    actions.push({ id: 'qa-tag', section: 'This note', label: 'Add a tag', run: () => openToolbarMenu('Tags') })
+    actions.push({ id: 'qa-move', section: 'This note', label: 'Move to a notebook', run: () => openToolbarMenu('Move') })
     // a body that hasn't arrived would be saved as an empty file
     if (!model.openNoteLoading.value) actions.push({ id: 'qa-download', section: 'This note', label: 'Download .md', run: () => downloadOpenNote(model) })
     actions.push({ id: 'qa-trash', section: 'This note', label: 'Move to Trash', run: () => model.trashWithUndo(note.id) })
   }
-  if (!typing && !chips.length) actions.push(
+  if (offerActions) actions.push(
     { id: 'qa-new-note', section: 'Library', label: 'New note', hint: 'Alt+N', run: newNote },
     { id: 'qa-new-notebook', section: 'Library', label: 'New notebook', run: () => act.newNotebook(model, null) },
     { id: 'qa-new-tag', section: 'Library', label: 'New tag', run: () => act.newTag(model) },
@@ -119,9 +122,9 @@ function QuickActionsDialog({ model, newNote, openNote }: { model: AppModel; new
   if (typing) {
     const name = typing.name.toLowerCase()
     const filters = tags.filter((t) => !chips.includes(t.id) && t.name.toLowerCase().includes(name))
-    choices.unshift(
-      ...filters.map((t): Choice => ({ id: `qa-filter-${t.id}`, section: 'Filter by tag', label: `#${t.name}`, stay: true, run: () => update(typing.before, [...chips, t.id]) })),
-    )
+    choices.unshift(...filters.map((t) => filterBy(t, typing.before)))
+  } else if (!chips.length && query === '') {
+    choices.push(...tags.map((t) => filterBy(t, '')))
   } else if (chips.length === 1 && query === '') {
     const t = chipTags[0]!
     choices.push({ id: `qa-go-${t.id}`, section: 'Go to', label: `#${t.name}`, run: () => model.select({ kind: 'tag', id: t.id }) })
@@ -151,6 +154,11 @@ function QuickActionsDialog({ model, newNote, openNote }: { model: AppModel; new
   const run = (c: Choice) => {
     if (c.stay) return c.run()
     close()
+    // an action's words named it rather than searched: drop the search, which may have hidden the note it acts on
+    if (c.section === 'This note' || c.section === 'Library') {
+      model.setSearch('')
+      if (c.section === 'This note' && note) model.selectNote(note.id)
+    }
     c.run()
   }
 
@@ -258,7 +266,7 @@ function QuickActionsDialog({ model, newNote, openNote }: { model: AppModel; new
           )
         })}
       </div>
-      <p class="qa-foot">Type # to filter by tag. Use the arrows and Return to run the highlighted one.</p>
+      <p class="qa-foot">Pick a tag to filter, or type to search notes and actions. Use the arrows and Return to run the highlighted one.</p>
     </dialog>
   )
 }
