@@ -22,6 +22,8 @@ This repo is the web app: a TypeScript app served as static files from `app.feat
 
 ## Commands and ports (when running or testing)
 
+Run browser automation tests only after the user says yes for that run: they take a long time and block the computer. That covers the Playwright tests (`pnpm e2e`, `pnpm e2e:cloud`, `pnpm e2e:live`, the `@speed` tests among them) and every command that includes them: `bash scripts/test_all.sh`. Without that yes, run only the checks that don't drive a browser (`pnpm test`, `pnpm typecheck`, `pnpm build`, `pnpm design-system --check`), and say the browser tests weren't run.
+
 | Command | What |
 |---|---|
 | `pnpm dev` | Dev server on 8430. Not under the security policy (Vite's dev client needs inline code); never test against it. |
@@ -156,7 +158,7 @@ trash /tmp/feathermark-interop
 
 ## Before pushing
 
-CI is manual-only (`../AGENTS.md`, "GitHub Actions"). Run `bash scripts/test_all.sh` and report "CI green, run locally". On macOS it runs Chromium and WebKit only: Playwright's Firefox does not start on macOS 27.2 ("Could not find profile folder", 2026-11-12). CI on Linux runs all three. Check Firefox-specific work by hand in Firefox until that is fixed.
+CI is manual-only (`../AGENTS.md`, "GitHub Actions"). Run `bash scripts/test_all.sh` (after the user's yes, see "Commands and ports") and report "CI green, run locally". On macOS it runs Chromium and WebKit only: Playwright's Firefox does not start on macOS 27.2 ("Could not find profile folder", 2026-11-12). CI on Linux runs all three. Check Firefox-specific work by hand in Firefox until that is fixed.
 
 ## Deploying (when publishing the demo to app.feathermark.com)
 
