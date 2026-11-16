@@ -39,7 +39,8 @@ export type PushResult =
   | { id: string; status: 'rejected'; code: string }
 
 export type SignupBody = { email: string; salt: Uint8Array; kdf: KdfParams; authKey: Uint8Array; recoveryAuthKey: Uint8Array; wrappedMasterPassword: Uint8Array; wrappedMasterRecovery: Uint8Array; libraryId: string }
-export type VerifyBody = { email: string; code: string; deviceName: string }
+/** The code counts only together with the auth key the signup sent. */
+export type VerifyBody = { email: string; code: string; authKey: Uint8Array; deviceName: string }
 export type LoginBody = { email: string; authKey: Uint8Array; deviceName: string }
 export type RecoverBody = { email: string; recoveryAuthKey: Uint8Array; deviceName: string }
 export type SetPasswordBody = { currentAuthKey?: Uint8Array; salt: Uint8Array; kdf: KdfParams; authKey: Uint8Array; wrappedMasterPassword: Uint8Array }
@@ -123,7 +124,7 @@ export class ApiClient {
     } }, 'none')
   }
   async verify(b: VerifyBody): Promise<Session> {
-    return session(await this.json({ method: 'POST', path: '/auth/verify', public: true, body: { email: b.email, code: b.code, device_name: b.deviceName } }))
+    return session(await this.json({ method: 'POST', path: '/auth/verify', public: true, body: { email: b.email, code: b.code, auth_key: toBase64(b.authKey), device_name: b.deviceName } }))
   }
   async resend(email: string): Promise<void> {
     await this.send({ method: 'POST', path: '/auth/resend', public: true, body: { email } }, 'none')

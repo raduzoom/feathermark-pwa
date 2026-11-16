@@ -107,7 +107,7 @@ async function guard<T>(body: () => Promise<T>): Promise<T> {
   }
 }
 
-type Pending = { email: string; session: number; wrappedMasterPassword: Uint8Array; salt: Uint8Array; kdf: KdfParams }
+type Pending = { email: string; session: number; authKey: Uint8Array; wrappedMasterPassword: Uint8Array; salt: Uint8Array; kdf: KdfParams }
 
 export class AccountService {
   private readonly base: string
@@ -182,7 +182,7 @@ export class AccountService {
       throw e
     }
     if (this.pending) await this.crypto.forget(this.pending.session).catch(() => undefined)
-    this.pending = { email, session: keys.session, wrappedMasterPassword: keys.wrappedPassword, salt: keys.salt, kdf: keys.kdf }
+    this.pending = { email, session: keys.session, authKey: keys.authKey, wrappedMasterPassword: keys.wrappedPassword, salt: keys.salt, kdf: keys.kdf }
     return { recoveryText: keys.recoveryText }
   }
 
@@ -193,7 +193,7 @@ export class AccountService {
   async verify(email: string, code: string, deviceName: string): Promise<SignedIn> {
     const p = this.pending
     if (!p || p.email !== email) throw new AccountError('codeExpired')
-    const r = await guard(() => this.client().verify({ email, code, deviceName }))
+    const r = await guard(() => this.client().verify({ email, code, authKey: p.authKey, deviceName }))
     this.pending = null
     this.signedIn = { email, token: r.token, session: p.session }
     this.loose.set(p.session, r.token)

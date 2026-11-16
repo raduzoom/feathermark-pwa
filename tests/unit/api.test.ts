@@ -33,7 +33,7 @@ const OPS: Op[] = [
   { key: 'GET /server', method: 'GET', path: '/server', public: true, reply: () => json({ api_version: 1, server_version: '1.0.0', billing_enabled: true, max_blob_bytes: 9, default_quota_bytes: 8 }), run: (c) => c.server() },
   { key: 'POST /auth/prelogin', method: 'POST', path: '/auth/prelogin', public: true, reply: () => json({ kdf: KDF, salt: b64([1, 2, 3]) }), run: (c) => c.prelogin('a@b.co') },
   { key: 'POST /auth/signup', method: 'POST', path: '/auth/signup', public: true, reply: () => empty(202), run: (c) => c.signup({ email: 'a@b.co', salt: new Uint8Array([1]), kdf: KDF, authKey: new Uint8Array([2]), recoveryAuthKey: new Uint8Array([3]), wrappedMasterPassword: new Uint8Array([4]), wrappedMasterRecovery: new Uint8Array([5]), libraryId: ULID }) },
-  { key: 'POST /auth/verify', method: 'POST', path: '/auth/verify', public: true, reply: () => json({ token: TOKEN, device_id: ULID, account: ACCOUNT }), run: (c) => c.verify({ email: 'a@b.co', code: '123456', deviceName: 'Safari on macOS' }) },
+  { key: 'POST /auth/verify', method: 'POST', path: '/auth/verify', public: true, reply: () => json({ token: TOKEN, device_id: ULID, account: ACCOUNT }), run: (c) => c.verify({ email: 'a@b.co', code: '123456', authKey: new Uint8Array([251, 255]), deviceName: 'Safari on macOS' }) },
   { key: 'POST /auth/resend', method: 'POST', path: '/auth/resend', public: true, reply: () => empty(202), run: (c) => c.resend('a@b.co') },
   { key: 'POST /auth/login', method: 'POST', path: '/auth/login', public: true, reply: () => json({ token: TOKEN, device_id: ULID, account: ACCOUNT, wrapped_master_password: b64([9]) }), run: (c) => c.login({ email: 'a@b.co', authKey: new Uint8Array([2]), deviceName: 'x' }) },
   { key: 'POST /auth/recover', method: 'POST', path: '/auth/recover', public: true, reply: () => json({ token: TOKEN, device_id: ULID, wrapped_master_recovery: b64([7]) }), run: (c) => c.recover({ email: 'a@b.co', recoveryAuthKey: new Uint8Array([3]), deviceName: 'x' }) },
@@ -140,9 +140,9 @@ test('deleteAccount, verify and login bodies use the protocol names', async () =
   const h = harness((c) => (c.method === 'DELETE' ? empty(202) : json({ token: TOKEN, device_id: ULID, account: ACCOUNT })))
   const c = h.client({ token: TOKEN })
   await c.deleteAccount(new Uint8Array([251, 255]))
-  await c.verify({ email: 'a@b.co', code: '123456', deviceName: 'Safari on macOS' })
+  await c.verify({ email: 'a@b.co', code: '123456', authKey: new Uint8Array([251, 255]), deviceName: 'Safari on macOS' })
   expect(sent(h.calls[0]!)).toEqual({ auth_key: '+/8=' })
-  expect(sent(h.calls[1]!)).toEqual({ email: 'a@b.co', code: '123456', device_name: 'Safari on macOS' })
+  expect(sent(h.calls[1]!)).toEqual({ email: 'a@b.co', code: '123456', auth_key: '+/8=', device_name: 'Safari on macOS' })
 })
 
 test('push sends snake_case changes with base64 meta and maps every result kind', async () => {

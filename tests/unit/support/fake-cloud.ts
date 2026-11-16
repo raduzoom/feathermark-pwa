@@ -184,7 +184,8 @@ export class FakeCloud {
         return new Response(null, { status: 202 })
       case '/auth/verify': {
         if (!a || a.verified || !this.codes.has(email)) return error(400, 'verification_expired')
-        if (this.codes.get(email) !== b.code) return error(400, 'verification_invalid')
+        // the code counts only together with the signup's auth key
+        if (this.codes.get(email) !== b.code || typeof b.auth_key !== 'string' || a.authHash !== hash(b.auth_key)) return error(400, 'verification_invalid')
         a.verified = true
         this.codes.delete(email)
         this.libraryId = a.libraryId
