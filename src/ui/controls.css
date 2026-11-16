@@ -410,14 +410,17 @@
   margin: 0;
 }
 @media (min-width: 1000px) {
+  /* the sentence, then the link on its own line, both flush left: no card and no full-height button */
   .demo-line {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--space-8);
-    padding: var(--space-16);
+    display: block;
+    min-height: 0;
+    padding: 0 var(--space-8);
     background: none;
-    box-shadow: inset 0 0 0 1px var(--c-line-hairline);
     color: var(--c-text-secondary);
+    line-height: 1.6;
+  }
+  .demo-line p {
+    margin: 0;
   }
   .demo-actions {
     display: flex;
@@ -440,16 +443,22 @@
   font-weight: 600;
   text-decoration: none;
 }
-/* From 1000 px, in the library's foot, it is a quiet text button: "Collapse sidebar" under Trash carries the outline */
+/* From 1000 px, in the library's foot, a quiet link under the sentence: no card, no full-height button,
+   so the sidebar keeps its room for notebooks and tags ("Collapse sidebar" under Trash carries the outline) */
 @media (min-width: 1000px) {
   .demo-link {
+    display: flex;
     justify-content: flex-start;
-    min-height: var(--h-button-large);
-    padding: 0 var(--space-8);
-    border-radius: var(--radius-input);
+    width: fit-content;
+    min-height: 0;
+    margin-top: var(--space-4);
+    padding: 0;
+    border-radius: var(--radius-code);
     box-shadow: none;
+    color: var(--c-text-primary);
   }
-  .demo-link-labels > span {
+  /* one class more than the centred rule further down, which would otherwise win */
+  .demo-link .demo-link-labels > span {
     text-align: left;
   }
 }

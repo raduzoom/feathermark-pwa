@@ -10,6 +10,10 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  /* the last 24 px fade out, so rows cut by the fixed foot read as "more below" (scroll padding keeps the end clear).
+     A mask reads only alpha: any opaque token works as the solid part. */
+  -webkit-mask-image: linear-gradient(to bottom, var(--c-text-primary) calc(100% - var(--space-24)), transparent);
+  mask-image: linear-gradient(to bottom, var(--c-text-primary) calc(100% - var(--space-24)), transparent);
   display: flex;
   flex-direction: column;
   padding: 0 var(--space-8) var(--space-16);
